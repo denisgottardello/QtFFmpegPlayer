@@ -49,7 +49,7 @@ public:
     };
     QThFFmpegPlayer(QString Path, QString Server, int Socket, QString UserID, QString Password, QString Function, bool RealTime, FFMPEGSourceTypes FFMPEGSourceType, RTSPTransports RTSPTransport= RTSP_TRANSPORT_AUTO);
     ~QThFFmpegPlayer();
-    QIFFmpegPlayerInterface *FFmpegPlayerInterface= nullptr;
+    QIFFmpegPlayerInterface *pQIFFmpegPlayerInterface= nullptr;
     QDateTime QDTLastFrame;
     int QThFFmpegPlayerReadPacket(uint8_t *pBuffer, int pBufferSize);
     void SpeedSet(int Speed);

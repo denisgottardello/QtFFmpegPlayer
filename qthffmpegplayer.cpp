@@ -111,7 +111,7 @@ void QThFFmpegPlayer::run() {
                                             QImage Image;
                                             Image.loadFromData(QBAByteArray);
                                             if (!Image.isNull()) {
-                                                if (FFmpegPlayerInterface) FFmpegPlayerInterface->FFmpegPlayerOnImage(Image);
+                                                if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnImage(Image);
                                                 emit OnImage(Image);
                                                 QDTLastFrame= QDateTime::currentDateTime();
                                             }
@@ -191,7 +191,7 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                             pSwrContext= nullptr;
                             emit UpdateLog("swr_init Error!!!");
                         } else {
-                            if (FFmpegPlayerInterface) FFmpegPlayerInterface->FFmpegPlayerOnAudioType(pAVCodecContextAudio->sample_rate, pAVCodecContextAudio->ch_layout.nb_channels);
+                            if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnAudioType(pAVCodecContextAudio->sample_rate, pAVCodecContextAudio->ch_layout.nb_channels);
                             emit OnAudioType(pAVCodecContextAudio->sample_rate, pAVCodecContextAudio->ch_layout.nb_channels);
                         }
                     }
@@ -217,13 +217,13 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                         if (CanGo) {
                             switch(QVFrames.at(FrameIndex).FrameType) {
                                 case FRAME_TYPE_AUDIO: {
-                                    if (FFmpegPlayerInterface) FFmpegPlayerInterface->FFmpegPlayerOnAudio((const uchar*)QVFrames.at(FrameIndex).QBABuffer.data(), QVFrames.at(FrameIndex).QBABuffer.length());
+                                    if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnAudio((const uchar*)QVFrames.at(FrameIndex).QBABuffer.data(), QVFrames.at(FrameIndex).QBABuffer.length());
                                     emit OnAudio((const uchar*)QVFrames.at(FrameIndex).QBABuffer.data(), QVFrames.at(FrameIndex).QBABuffer.length());
                                     //qDebug() << "audio" << QVFrames.at(FrameIndex).pts;
                                     break;
                                 }
                                 case FRAME_TYPE_VIDEO: {
-                                    if (FFmpegPlayerInterface) FFmpegPlayerInterface->FFmpegPlayerOnImage(QVFrames[FrameIndex].Image);
+                                    if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnImage(QVFrames[FrameIndex].Image);
                                     emit OnImage(QVFrames.at(FrameIndex).Image);
                                     QDTLastFrame= QDateTime::currentDateTime();
                                     break;
