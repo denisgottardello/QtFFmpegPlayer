@@ -21,8 +21,8 @@ unix:!mac {
 ANDROID_ABIS = arm64-v8a
 
 unix {
-    INCLUDEPATH += ../../ffmpeg-6.1.1/
     unix:!mac {
+        INCLUDEPATH += ../../ffmpeg-6.1.1/
         !android {
             LIBS += ../../ffmpeg-6.1.1/libs/libavdevice.so.60
             LIBS += ../../ffmpeg-6.1.1/libs/libavfilter.so.9
@@ -52,26 +52,27 @@ unix {
         }
     }
     unix:mac {
-        LIBS += ../../ffmpeg-6.1.1/libavdevice/libavdevice.60.dylib
-        LIBS += ../../ffmpeg-6.1.1/libavfilter/libavfilter.9.dylib
-        LIBS += ../../ffmpeg-6.1.1/libavformat/libavformat.60.dylib
-        LIBS += ../../ffmpeg-6.1.1/libavcodec/libavcodec.60.dylib
-        LIBS += ../../ffmpeg-6.1.1/libpostproc/libpostproc.57.dylib
-        LIBS += ../../ffmpeg-6.1.1/libswresample/libswresample.4.dylib
-        LIBS += ../../ffmpeg-6.1.1/libswscale/libswscale.7.dylib
-        LIBS += ../../ffmpeg-6.1.1/libavutil/libavutil.58.dylib
+        INCLUDEPATH += ../../ffmpeg-6.0/
+        LIBS += ../../ffmpeg-6.0/libavdevice/libavdevice.60.dylib
+        LIBS += ../../ffmpeg-6.0/libavfilter/libavfilter.9.dylib
+        LIBS += ../../ffmpeg-6.0/libavformat/libavformat.60.dylib
+        LIBS += ../../ffmpeg-6.0/libavcodec/libavcodec.60.dylib
+        LIBS += ../../ffmpeg-6.0/libpostproc/libpostproc.57.dylib
+        LIBS += ../../ffmpeg-6.0/libswresample/libswresample.4.dylib
+        LIBS += ../../ffmpeg-6.0/libswscale/libswscale.7.dylib
+        LIBS += ../../ffmpeg-6.0/libavutil/libavutil.58.dylib
     }
 }
 windows {
-    INCLUDEPATH += ../../ffmpeg-6.1.1/include
-    LIBS += ../../ffmpeg-6.1.1/lib/avcodec.lib
-    LIBS += ../../ffmpeg-6.1.1/lib/avdevice.lib
-    LIBS += ../../ffmpeg-6.1.1/lib/swresample.lib
-    LIBS += ../../ffmpeg-6.1.1/lib/avfilter.lib
-    LIBS += ../../ffmpeg-6.1.1/lib/avformat.lib
-    LIBS += ../../ffmpeg-6.1.1/lib/avutil.lib
-    LIBS += ../../ffmpeg-6.1.1/lib/postproc.lib
-    LIBS += ../../ffmpeg-6.1.1/lib/swscale.lib
+    INCLUDEPATH += ../../ffmpeg-6.0/include
+    LIBS += ../../ffmpeg-6.0/lib/avcodec.lib
+    LIBS += ../../ffmpeg-6.0/lib/avdevice.lib
+    LIBS += ../../ffmpeg-6.0/lib/swresample.lib
+    LIBS += ../../ffmpeg-6.0/lib/avfilter.lib
+    LIBS += ../../ffmpeg-6.0/lib/avformat.lib
+    LIBS += ../../ffmpeg-6.0/lib/avutil.lib
+    LIBS += ../../ffmpeg-6.0/lib/postproc.lib
+    LIBS += ../../ffmpeg-6.0/lib/swscale.lib
 }
 
 SOURCES += main.cpp\
