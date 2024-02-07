@@ -2,7 +2,6 @@
 #define QTHPLAYER_H
 
 #include "QThread"
-
 extern "C" {
     #include "libavcodec/avcodec.h"
     #include "libavformat/avformat.h"
@@ -15,7 +14,6 @@ extern "C" {
 #include "QDateTime"
 #include "QImage"
 #include "qiffmpegplayerinterface.h"
-#include "QTcpSocket"
 
 enum FrameTypes {
     FRAME_TYPE_AUDIO,
@@ -35,6 +33,7 @@ struct Frame {
     double pts;
     QImage Image;
     QByteArray QBABuffer;
+    Frame() : FrameType(FRAME_TYPE_VIDEO), pts(0) {}
 };
 
 class QThFFmpegPlayer : public QThread
@@ -44,13 +43,12 @@ class QThFFmpegPlayer : public QThread
 public:
     enum FFMPEGSourceTypes {
         FFMPEG_SOURCE_CALLBACK,
-        FFMPEG_SOURCE_HTTP,
         FFMPEG_SOURCE_STREAM,
     };
-    QThFFmpegPlayer(QString Path, QString Server, int Socket, QString UserID, QString Password, QString Function, bool RealTime, FFMPEGSourceTypes FFMPEGSourceType, RTSPTransports RTSPTransport= RTSP_TRANSPORT_AUTO);
+    QThFFmpegPlayer(QString Path, bool RealTime, FFMPEGSourceTypes FFMPEGSourceType, RTSPTransports RTSPTransport= RTSP_TRANSPORT_AUTO, bool DecodeFrames= true);
     ~QThFFmpegPlayer();
     QIFFmpegPlayerInterface *pQIFFmpegPlayerInterface= nullptr;
-    QDateTime QDTLastFrame;
+    QDateTime QDTLastPacket;
     int QThFFmpegPlayerReadPacket(uint8_t *pBuffer, int pBufferSize);
     void SpeedSet(int Speed);
     void Stop();
@@ -64,11 +62,11 @@ signals:
     void UpdateLog(QString Log);
 
 private:
-    bool DoStart= true, RealTime;
+    bool DoStart= true, RealTime, DecodeFrames;
     FFMPEGSourceTypes FFMPEGSourceType;
     int RTSPTransport, Socket, Speed= 1;
     qint64 LastFrame, Frames;
-    QString Path, Server, UserID, Password, Function;
+    QString Path;
     QVector<Frame> QVFrames;
     void run();
     int CodecContextOpen(int *pStreamIn, AVCodecContext **pAVCodecContext, AVFormatContext *pAVFormatContextIn, AVMediaType type, AVStream **pAVStream);

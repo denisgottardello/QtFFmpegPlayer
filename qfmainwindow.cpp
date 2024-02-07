@@ -12,6 +12,16 @@ QFMainWindow::QFMainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::QF
     AudioFormat.setSampleSize(16);
     AudioFormat.setSampleType(QAudioFormat::SignedInt);
 
+    for (int count= 0; count< QCoreApplication::arguments().count(); count++) {
+        QString Parameter= QString(QCoreApplication::arguments().at(count));
+        if (Parameter.length()> QString("--FilePath=").length()) {
+            if (Parameter.leftRef(QString("--FilePath=").length()).toString().compare("--FilePath=")== 0) {
+                ui->QLEFilePath->setText(Parameter.right(Parameter.length()- QString("--FilePath=").length()));
+                break;
+            }
+        }
+    }
+
     QAudioDeviceInfo AudioDeviceInfo(QAudioDeviceInfo::defaultOutputDevice());
     if (!AudioDeviceInfo.isFormatSupported(AudioFormat)) {
         qDebug() << "raw audio format not supported by backend, cannot play audio.";
@@ -31,10 +41,10 @@ void QFMainWindow::on_QPBPlay_clicked() {
     ui->QPBPlay->setEnabled(false);
     Frames= 0;
     if (ui->QRBCallbackStream->isChecked()) {
-        QFFileIn.setFileName(ui->QLEPath->text());
+        QFFileIn.setFileName(ui->QLEFilePath->text());
         if (QFFileIn.open(QIODevice::ReadOnly)) {
             PachetCount= 0;
-            pQThFFmpegPlayer= new QThFFmpegPlayer(ui->QLEPath->text(), "", 0, "", "", "", ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_CALLBACK);
+            pQThFFmpegPlayer= new QThFFmpegPlayer(ui->QLEFilePath->text(), ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_CALLBACK);
             connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnAudioType(int,int)), this, SLOT(OnAudioType(int,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnEnd()), this, SLOT(OnEnd()));
@@ -44,15 +54,7 @@ void QFMainWindow::on_QPBPlay_clicked() {
             pQThFFmpegPlayer->start();
         }
     } else if (ui->QRBFFmpegStream->isChecked()) {
-        pQThFFmpegPlayer= new QThFFmpegPlayer(ui->QLEPath->text(), "", 0, "", "", "", ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_STREAM, RTSP_TRANSPORT_UDP);
-        connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
-        connect(pQThFFmpegPlayer, SIGNAL(OnAudioType(int,int)), this, SLOT(OnAudioType(int,int)), Qt::BlockingQueuedConnection);
-        connect(pQThFFmpegPlayer, SIGNAL(OnEnd()), this, SLOT(OnEnd()));
-        connect(pQThFFmpegPlayer, SIGNAL(OnImage(QImage)), this, SLOT(OnImage(QImage)), Qt::BlockingQueuedConnection);
-        connect(pQThFFmpegPlayer, SIGNAL(UpdateLog(QString)), this, SLOT(UpdateLog(QString)));
-        pQThFFmpegPlayer->start();
-    } else {
-        pQThFFmpegPlayer= new QThFFmpegPlayer(ui->QLEPath->text(), "domusboss", 3001, "Admin", "sissi", "/Live?id_camera=8&Type=mjpg", ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_HTTP);
+        pQThFFmpegPlayer= new QThFFmpegPlayer(ui->QLEFilePath->text(), ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_STREAM, RTSP_TRANSPORT_UDP);
         connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
         connect(pQThFFmpegPlayer, SIGNAL(OnAudioType(int,int)), this, SLOT(OnAudioType(int,int)), Qt::BlockingQueuedConnection);
         connect(pQThFFmpegPlayer, SIGNAL(OnEnd()), this, SLOT(OnEnd()));
@@ -63,14 +65,30 @@ void QFMainWindow::on_QPBPlay_clicked() {
     ui->QPBStop->setEnabled(true);
 }
 
-void QFMainWindow::on_QPBStop_clicked() {
-    ui->QPBStop->setEnabled(false);
-    if (pQThFFmpegPlayer) pQThFFmpegPlayer->Stop();
-}
-
 void QFMainWindow::on_QPBQuit_clicked() {
     if (ui->QPBStop->isEnabled()) on_QPBStop_clicked();
     this->close();
+}
+
+void QFMainWindow::on_QPBStop_clicked() {
+    ui->QPBStop->setEnabled(false);
+    if (pQThFFmpegPlayer) {
+        disconnect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)));
+        disconnect(pQThFFmpegPlayer, SIGNAL(OnImage(QImage)), this, SLOT(OnImage(QImage)));
+        pQThFFmpegPlayer->Stop();
+        delete pQThFFmpegPlayer;
+        pQThFFmpegPlayer= nullptr;
+    }
+    ui->QPBPlay->setEnabled(true);
+}
+
+void QFMainWindow::on_QTBFilePath_clicked() {
+    QFileDialog FileDialog(this);
+    FileDialog.setDirectory(QFileInfo(ui->QLEFilePath->text()).dir().absolutePath());
+    FileDialog.setViewMode(QFileDialog::Detail);
+    if (FileDialog.exec()== QDialog::Accepted) {
+        ui->QLEFilePath->setText(FileDialog.selectedFiles().at(0));
+    }
 }
 
 void QFMainWindow::OnAudio(const uchar* data, int Length) {
@@ -87,13 +105,7 @@ void QFMainWindow::OnAudioType(int SampleRate, int ChannelCount) {
 }
 
 void QFMainWindow::OnEnd() {
-    UpdateLog("OnEnd() begin");
-    if (pQThFFmpegPlayer) {
-        delete pQThFFmpegPlayer;
-        pQThFFmpegPlayer= nullptr;
-    }
-    ui->QPBPlay->setEnabled(true);
-    UpdateLog("OnEnd() end");
+    ui->QPBStop->click();
 }
 
 void QFMainWindow::OnImage(QImage Image) {

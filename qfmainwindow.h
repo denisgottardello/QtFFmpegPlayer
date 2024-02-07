@@ -1,12 +1,13 @@
 #ifndef QFMAINWINDOW_H
 #define QFMAINWINDOW_H
 
-#include <QMainWindow>
-#include "QDebug"
-#include "qthffmpegplayer.h"
-#include "QFile"
 #include "QAudioFormat"
 #include "QAudioOutput"
+#include "QDebug"
+#include "QFile"
+#include "QFileDialog"
+#include <QMainWindow>
+#include "qthffmpegplayer.h"
 
 namespace Ui {
     class QFMainWindow;
@@ -20,17 +21,16 @@ public:
     explicit QFMainWindow(QWidget *parent = nullptr);
     ~QFMainWindow();
 
-public slots:
-    void OnPacketRead(uint8_t *pBuffer, int pBufferSize, int *BytesIn);
-
 private slots:
     void on_QPBPlay_clicked();
     void on_QPBQuit_clicked();
     void on_QPBStop_clicked();
+    void on_QTBFilePath_clicked();
     void OnAudio(const uchar* data, int Length);
     void OnAudioType(int SampleRate, int ChannelCount);
     void OnEnd();
     void OnImage(QImage Image);
+    void OnPacketRead(uint8_t *pBuffer, int pBufferSize, int *BytesIn);
     void UpdateLog(QString Log);
 
 private:
