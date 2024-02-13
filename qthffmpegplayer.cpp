@@ -4,6 +4,10 @@ static int ReadPacket(void *opaque, uint8_t *pBuffer, int pBufferSize) {
     return static_cast<QThFFmpegPlayer*>(opaque)->QThFFmpegPlayerReadPacket(pBuffer, pBufferSize);
 }
 
+static int TimeoutCallback(void *pQThFFmpegPlayer) {
+    return !((QThFFmpegPlayer*)(pQThFFmpegPlayer))->DoStart;
+}
+
 QThFFmpegPlayer::QThFFmpegPlayer(QString Path, bool RealTime, FFMPEGSourceTypes FFMPEGSourceType, RTSPTransports RTSPTransport, bool DecodeFrames) {
     this->Path= Path;
     this->RealTime= RealTime;
@@ -60,22 +64,17 @@ void QThFFmpegPlayer::run() {
         }
         case FFMPEG_SOURCE_STREAM: {
             avformat_network_init();
-            //AVDictionary *pAVDictionary= nullptr; {
-                /*av_dict_set(&pAVDictionary, "stimeout", "5000000", 0); // timeout in microseconds
-                switch(RTSPTransport) {
-                    case RTSP_TRANSPORT_HTTP: av_dict_set(&pAVDictionary, "rtsp_transport", "http", 0); break;
-                    case RTSP_TRANSPORT_TCP: av_dict_set(&pAVDictionary, "rtsp_transport", "tcp", 0); break;
-                    case RTSP_TRANSPORT_UDP: av_dict_set(&pAVDictionary, "rtsp_transport", "udp", 0); break;
-                    case RTSP_TRANSPORT_UDP_MULTICAST: av_dict_set(&pAVDictionary, "rtsp_transport", "udp_multicast", 0); break;
-                }*/
-                if (avformat_open_input(&pAVFormatContextIn, Path.toStdString().c_str(), nullptr, nullptr/*&pAVDictionary*/)< 0) emit UpdateLog("avformat_open_input Error!!!");
+            pAVFormatContextIn= avformat_alloc_context(); {
+                pAVFormatContextIn->interrupt_callback.callback= TimeoutCallback;
+                pAVFormatContextIn->interrupt_callback.opaque= this;
+                if (avformat_open_input(&pAVFormatContextIn, Path.toStdString().c_str(), nullptr, nullptr)< 0) emit UpdateLog("avformat_open_input Error!!!");
                 else {
                     runCommon(pAVFormatContextIn);
                     avformat_close_input(&pAVFormatContextIn);
                 }
-            /*}{
-                av_dict_free(&pAVDictionary);
-            }*/
+            }{
+                avformat_free_context(pAVFormatContextIn);
+            }
             avformat_network_deinit();
             break;
         }
@@ -96,7 +95,7 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
         AVStream *pAVStreamVideo= nullptr;
         CodecContextOpen(&StreamAudioIn, &pAVCodecContextAudio, pAVFormatContextIn, AVMEDIA_TYPE_AUDIO, &pAVStreamAudio);
         CodecContextOpen(&StreamVideoIn, &pAVCodecContextVideo, pAVFormatContextIn, AVMEDIA_TYPE_VIDEO, &pAVStreamVideo);
-        if (StreamAudioIn || StreamVideoIn) {
+        if (DoStart && (StreamAudioIn || StreamVideoIn)) {
             AVFrame *pAVFrame= av_frame_alloc();
             if (!pAVFrame) emit UpdateLog("av_frame_alloc Error!!!");
             else {

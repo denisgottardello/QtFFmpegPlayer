@@ -47,6 +47,7 @@ public:
     };
     QThFFmpegPlayer(QString Path, bool RealTime, FFMPEGSourceTypes FFMPEGSourceType, RTSPTransports RTSPTransport= RTSP_TRANSPORT_AUTO, bool DecodeFrames= true);
     ~QThFFmpegPlayer();
+    bool DoStart= true;
     QIFFmpegPlayerInterface *pQIFFmpegPlayerInterface= nullptr;
     QDateTime QDTLastPacket;
     int QThFFmpegPlayerReadPacket(uint8_t *pBuffer, int pBufferSize);
@@ -62,7 +63,7 @@ signals:
     void UpdateLog(QString Log);
 
 private:
-    bool DoStart= true, RealTime, DecodeFrames;
+    bool RealTime, DecodeFrames;
     FFMPEGSourceTypes FFMPEGSourceType;
     int RTSPTransport, Socket, Speed= 1;
     qint64 LastFrame, Frames;

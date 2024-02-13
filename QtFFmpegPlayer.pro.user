@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 12.0.1, 2024-02-07T12:01:37. -->
+<!-- Written by QtCreator 12.0.2, 2024-02-13T21:02:17. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -202,7 +202,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:/home/denis/Cpp/QtFFmpegPlayer/QtFFmpegPlayer/QtFFmpegPlayer.pro</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">/home/denis/Cpp/QtFFmpegPlayer/QtFFmpegPlayer/QtFFmpegPlayer.pro</value>
     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
-    <value type="QString" key="RunConfiguration.Arguments">--FilePath=/home/denis/aa11:56:48.mp4</value>
+    <value type="QString" key="RunConfiguration.Arguments">--FilePath=rtsp://username1aa:password1aa@camposampiero.ddns.net:554/proxyStream-5</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
