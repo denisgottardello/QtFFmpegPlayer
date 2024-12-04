@@ -54,7 +54,6 @@ void QThFFmpegPlayer::run() {
                         av_freep(&pAVIOContext->buffer);
                         av_freep(&pAVIOContext);
                     }
-                    UpdateLog("ddd");
                 }
             }
             if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnConnectionState(CONNECTION_STATE_IDLE);
@@ -200,23 +199,25 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                         av_frame_unref(pAVFrame);
                                     }
                                 }
-                                if (pAVPacket->dts== AV_NOPTS_VALUE) {
-                                    QString Result= QString("Decoding Time Stamp error, stream index: %1, id: %2, type: %3")
-                                    .arg(pAVPacket->stream_index)
-                                        .arg(pAVFormatContextIn->streams[pAVPacket->stream_index]->id)
-                                        .arg(AVMediaTypeToString(pAVFormatContextIn->streams[pAVPacket->stream_index]->codecpar->codec_type));
-                                    emit UpdateLog(Result);
-                                } else {
-                                    AVRational time_base= pAVFormatContextIn->streams[pAVPacket->stream_index]->time_base;
-                                    AVRational time_base_q= {1, static_cast<int>(static_cast<double>(AV_TIME_BASE) / Speed)};
-                                    int64_t DecodingTimeStampTemp= av_rescale_q(pAVPacket->dts, time_base, time_base_q);
-                                    if (DecodingTimeStampStart< 0) {
-                                        DecodingTimeStampStart= DecodingTimeStampTemp;
-                                        TimeStart= av_gettime();
+                                if (RealTime) {
+                                    if (pAVPacket->dts== AV_NOPTS_VALUE) {
+                                        QString Result= QString("Decoding Time Stamp error, stream index: %1, id: %2, type: %3")
+                                        .arg(pAVPacket->stream_index)
+                                            .arg(pAVFormatContextIn->streams[pAVPacket->stream_index]->id)
+                                            .arg(AVMediaTypeToString(pAVFormatContextIn->streams[pAVPacket->stream_index]->codecpar->codec_type));
+                                        emit UpdateLog(Result);
                                     } else {
-                                        int64_t nowTime= av_gettime()- TimeStart;
-                                        if ((DecodingTimeStampTemp- DecodingTimeStampStart)> nowTime) {
-                                            av_usleep(DecodingTimeStampTemp- DecodingTimeStampStart- nowTime);
+                                        AVRational time_base= pAVFormatContextIn->streams[pAVPacket->stream_index]->time_base;
+                                        AVRational time_base_q= {1, static_cast<int>(static_cast<double>(AV_TIME_BASE) / Speed)};
+                                        int64_t DecodingTimeStampTemp= av_rescale_q(pAVPacket->dts, time_base, time_base_q);
+                                        if (DecodingTimeStampStart< 0) {
+                                            DecodingTimeStampStart= DecodingTimeStampTemp;
+                                            TimeStart= av_gettime();
+                                        } else {
+                                            int64_t nowTime= av_gettime()- TimeStart;
+                                            if ((DecodingTimeStampTemp- DecodingTimeStampStart)> nowTime) {
+                                                av_usleep(DecodingTimeStampTemp- DecodingTimeStampStart- nowTime);
+                                            }
                                         }
                                     }
                                 }

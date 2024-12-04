@@ -110,8 +110,10 @@ void QFMainWindow::on_QTBFilePath_clicked() {
 }
 
 void QFMainWindow::OnAudio(const uchar* data, int Length) {
-    while (pQAudioOutput->bytesFree()< Length) usleep(1000);
-    pQIODevice->write(reinterpret_cast<const char*>(data), Length);
+    if (ui->QCBRealTime->isChecked()) {
+        while (pQAudioOutput->bytesFree()< Length) usleep(1000);
+        pQIODevice->write(reinterpret_cast<const char*>(data), Length);
+    }
 }
 
 void QFMainWindow::OnAudioType(int SampleRate, int ChannelCount) {

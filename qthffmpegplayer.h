@@ -28,7 +28,7 @@ public:
         FFMPEG_SOURCE_CALLBACK,
         FFMPEG_SOURCE_STREAM,
     };
-    QThFFmpegPlayer(QString Path, bool RealTime, FFMPEGSourceTypes FFMPEGSourceType, RTSPTransports RTSPTransport= RTSP_TRANSPORT_AUTO, bool DecodeFrames= true);
+    QThFFmpegPlayer(QString Path, bool RealTime= true, FFMPEGSourceTypes FFMPEGSourceType= FFMPEG_SOURCE_STREAM, RTSPTransports RTSPTransport= RTSP_TRANSPORT_AUTO, bool DecodeFrames= true);
     ~QThFFmpegPlayer();
     bool DoStart= true;
     double Speed= 1;
