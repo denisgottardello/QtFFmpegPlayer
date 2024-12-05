@@ -28,7 +28,7 @@ public:
         FFMPEG_SOURCE_CALLBACK,
         FFMPEG_SOURCE_STREAM,
     };
-    QThFFmpegPlayer(QString Path, bool RealTime= true, FFMPEGSourceTypes FFMPEGSourceType= FFMPEG_SOURCE_STREAM, RTSPTransports RTSPTransport= RTSP_TRANSPORT_AUTO, bool DecodeFrames= true);
+    QThFFmpegPlayer(QString Path, bool RealTime= true, FFMPEGSourceTypes FFMPEGSourceType= FFMPEG_SOURCE_STREAM);
     ~QThFFmpegPlayer();
     bool DoStart= true;
     double Speed= 1;
@@ -48,12 +48,11 @@ signals:
     void UpdateLog(QString Log);
 
 private:
-    bool RealTime, DecodeFrames;
+    bool RealTime;
     FFMPEGSourceTypes FFMPEGSourceType;
-    int RTSPTransport, Socket;
+    int Socket;
     int64_t DecodingTimeStampStart= -1;
     int64_t TimeStart= -1;
-    qint64 LastFrame, Frames;
     QString Path;
     void run();
     int CodecContextOpen(int *pStreamIn, AVCodecContext **pAVCodecContext, AVFormatContext *pAVFormatContextIn, AVMediaType type, AVStream **pAVStream);

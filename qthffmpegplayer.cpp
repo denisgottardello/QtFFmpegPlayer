@@ -9,12 +9,10 @@ static int TimeoutCallback(void *pQThFFmpegPlayer) {
     return ((QThFFmpegPlayer*)(pQThFFmpegPlayer))->ElapsedTimer.elapsed()> 10000;
 }
 
-QThFFmpegPlayer::QThFFmpegPlayer(QString Path, bool RealTime, FFMPEGSourceTypes FFMPEGSourceType, RTSPTransports RTSPTransport, bool DecodeFrames) {
+QThFFmpegPlayer::QThFFmpegPlayer(QString Path, bool RealTime, FFMPEGSourceTypes FFMPEGSourceType) {
     this->Path= Path;
     this->RealTime= RealTime;
     this->FFMPEGSourceType= FFMPEGSourceType;
-    this->RTSPTransport= RTSPTransport;
-    this->DecodeFrames= DecodeFrames;
     QDTLastPacket= QDateTime::currentDateTime();
 }
 
@@ -25,7 +23,6 @@ QThFFmpegPlayer::~QThFFmpegPlayer() {
 }
 
 void QThFFmpegPlayer::run() {
-    Frames= LastFrame= 0;
     AVFormatContext *pAVFormatContextIn= nullptr;
     switch (FFMPEGSourceType) {
         case FFMPEG_SOURCE_CALLBACK: {
@@ -134,96 +131,99 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                         int Ret= av_read_frame(pAVFormatContextIn, pAVPacket);
                         if (Ret>= 0) {
                             QDTLastPacket= QDateTime::currentDateTime();
-                            if (DecodeFrames) {
-                                if (pAVPacket->stream_index== StreamAudioIn) {
-                                    Ret= avcodec_send_packet(pAVCodecContextAudio, pAVPacket);
-                                    if (Ret< 0) emit UpdateLog("StreamAudioIn Error submitting a packet for decoding.");
-                                    while (Ret>= 0) {
-                                        Ret= avcodec_receive_frame(pAVCodecContextAudio, pAVFrame);
-                                        if (Ret>= 0) {
-                                            int64_t SamplesOut= av_rescale_rnd(swr_get_delay(pSwrContext, pAVCodecContextAudio->sample_rate)+ pAVFrame->nb_samples, 44100, pAVCodecContextAudio->sample_rate, AV_ROUND_UP);
-                                            uint8_t *BufferOut;
-                                            int Ret= av_samples_alloc(static_cast<uint8_t**>(&BufferOut), nullptr, pAVCodecContextAudio->ch_layout.nb_channels, static_cast<int>(SamplesOut), AV_SAMPLE_FMT_S16, 0);
-                                            if (Ret< 0) emit UpdateLog("av_samples_alloc Error!!!");
+                            if (pAVPacket->stream_index== StreamAudioIn) {
+                                Ret= avcodec_send_packet(pAVCodecContextAudio, pAVPacket);
+                                if (Ret< 0) emit UpdateLog("StreamAudioIn Error submitting a packet for decoding.");
+                                while (Ret>= 0) {
+                                    Ret= avcodec_receive_frame(pAVCodecContextAudio, pAVFrame);
+                                    if (Ret>= 0) {
+                                        int64_t SamplesOut= av_rescale_rnd(swr_get_delay(pSwrContext, pAVCodecContextAudio->sample_rate)+ pAVFrame->nb_samples, 44100, pAVCodecContextAudio->sample_rate, AV_ROUND_UP);
+                                        uint8_t *BufferOut;
+                                        int Ret= av_samples_alloc(static_cast<uint8_t**>(&BufferOut), nullptr, pAVCodecContextAudio->ch_layout.nb_channels, static_cast<int>(SamplesOut), AV_SAMPLE_FMT_S16, 0);
+                                        if (Ret< 0) emit UpdateLog("av_samples_alloc Error!!!");
+                                        else {
+                                            /* convert to destination format */
+                                            Ret= swr_convert(pSwrContext, static_cast<uint8_t**>(&BufferOut), SamplesOut, const_cast<const uint8_t**>(pAVFrame->data), pAVFrame->nb_samples);
+                                            if (Ret< 0) emit UpdateLog("swr_convert Error!!!");
                                             else {
-                                                /* convert to destination format */
-                                                Ret= swr_convert(pSwrContext, static_cast<uint8_t**>(&BufferOut), SamplesOut, const_cast<const uint8_t**>(pAVFrame->data), pAVFrame->nb_samples);
-                                                if (Ret< 0) emit UpdateLog("swr_convert Error!!!");
+                                                Ret= av_samples_get_buffer_size(nullptr, pAVCodecContextAudio->ch_layout.nb_channels, Ret, AV_SAMPLE_FMT_S16, 0);
+                                                if (Ret< 0) emit UpdateLog("av_samples_get_buffer_size Error!!!");
                                                 else {
-                                                    Ret= av_samples_get_buffer_size(nullptr, pAVCodecContextAudio->ch_layout.nb_channels, Ret, AV_SAMPLE_FMT_S16, 0);
-                                                    if (Ret< 0) emit UpdateLog("av_samples_get_buffer_size Error!!!");
-                                                    else {
-                                                        if (pAVFrame->pts!= AV_NOPTS_VALUE) {
-                                                            if (Speed== 1) {
-                                                                if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnAudio(BufferOut, Ret);
-                                                                emit OnAudio(BufferOut, Ret);
-                                                            }
+                                                    if (pAVFrame->pts!= AV_NOPTS_VALUE) {
+                                                        if (Speed== 1) {
+                                                            if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnAudio(BufferOut, Ret);
+                                                            emit OnAudio(BufferOut, Ret);
                                                         }
                                                     }
                                                 }
-                                                av_freep(&BufferOut);
                                             }
+                                            av_freep(&BufferOut);
                                         }
-                                    }
-                                } else if (pAVPacket->stream_index== StreamVideoIn) {
-                                    Ret= avcodec_send_packet(pAVCodecContextVideo, pAVPacket);
-                                    if (Ret< 0) emit UpdateLog("Error submitting a packet for decoding.");
-                                    while (Ret>= 0) {
-                                        Ret= avcodec_receive_frame(pAVCodecContextVideo, pAVFrame);
-                                        if (Ret>= 0) {
-                                            AVFrame *pAVFrameRGB= av_frame_alloc(); {
-                                                uint8_t *Buffer= static_cast<uint8_t*>(malloc(static_cast<size_t>(av_image_get_buffer_size(AV_PIX_FMT_RGB24, pAVCodecContextVideo->width, pAVCodecContextVideo->height, 1)))); {
-                                                    av_image_fill_arrays(pAVFrameRGB->data, pAVFrameRGB->linesize, Buffer, AV_PIX_FMT_RGB24, pAVCodecContextVideo->width, pAVCodecContextVideo->height, 1);
-                                                    SwsContext* encoderSwsContext= sws_getContext(pAVCodecContextVideo->width, pAVCodecContextVideo->height, pAVCodecContextVideo->pix_fmt, pAVCodecContextVideo->width, pAVCodecContextVideo->height, AV_PIX_FMT_RGB24, SWS_BICUBIC, nullptr, nullptr, nullptr);{
-                                                        sws_scale(encoderSwsContext, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContextVideo->height, pAVFrameRGB->data, pAVFrameRGB->linesize);
-                                                        QImage Image= QImage(pAVCodecContextVideo->width, pAVCodecContextVideo->height, QImage::Format_RGB32);
-                                                        AVFrame2QImage(pAVFrameRGB, Image, pAVCodecContextVideo->width, pAVCodecContextVideo->height);
-                                                        if (!Image.isNull()) {
-                                                            if (DoStart) {
-                                                                if (pAVFrame->pts!= AV_NOPTS_VALUE) {
-                                                                    if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnImage(Image);
-                                                                    emit OnImage(Image);
-                                                                }
-                                                            }
-                                                        }
-                                                    }{
-                                                        sws_freeContext(encoderSwsContext);
-                                                    }
-                                                }{
-                                                    free(Buffer);
-                                                }
-                                            }{
-                                                av_frame_free(&pAVFrameRGB);
-                                            }
-                                        }
-                                        av_frame_unref(pAVFrame);
                                     }
                                 }
-                                if (RealTime) {
-                                    if (pAVPacket->dts== AV_NOPTS_VALUE) {
-                                        QString Result= QString("Decoding Time Stamp error, stream index: %1, id: %2, type: %3")
-                                        .arg(pAVPacket->stream_index)
-                                            .arg(pAVFormatContextIn->streams[pAVPacket->stream_index]->id)
-                                            .arg(AVMediaTypeToString(pAVFormatContextIn->streams[pAVPacket->stream_index]->codecpar->codec_type));
-                                        emit UpdateLog(Result);
-                                    } else {
-                                        AVRational time_base= pAVFormatContextIn->streams[pAVPacket->stream_index]->time_base;
-                                        AVRational time_base_q= {1, static_cast<int>(static_cast<double>(AV_TIME_BASE) / Speed)};
-                                        int64_t DecodingTimeStampTemp= av_rescale_q(pAVPacket->dts, time_base, time_base_q);
-                                        if (DecodingTimeStampStart< 0) {
-                                            DecodingTimeStampStart= DecodingTimeStampTemp;
-                                            TimeStart= av_gettime();
-                                        } else {
-                                            int64_t nowTime= av_gettime()- TimeStart;
-                                            if ((DecodingTimeStampTemp- DecodingTimeStampStart)> nowTime) {
-                                                av_usleep(DecodingTimeStampTemp- DecodingTimeStampStart- nowTime);
+                            } else if (pAVPacket->stream_index== StreamVideoIn) {
+                                Ret= avcodec_send_packet(pAVCodecContextVideo, pAVPacket);
+                                if (Ret< 0) emit UpdateLog("Error submitting a packet for decoding.");
+                                while (Ret>= 0) {
+                                    Ret= avcodec_receive_frame(pAVCodecContextVideo, pAVFrame);
+                                    if (Ret>= 0) {
+                                        AVFrame *pAVFrameRGB= av_frame_alloc(); {
+                                            uint8_t *Buffer= static_cast<uint8_t*>(malloc(static_cast<size_t>(av_image_get_buffer_size(AV_PIX_FMT_RGB24, pAVCodecContextVideo->width, pAVCodecContextVideo->height, 1)))); {
+                                                av_image_fill_arrays(pAVFrameRGB->data, pAVFrameRGB->linesize, Buffer, AV_PIX_FMT_RGB24, pAVCodecContextVideo->width, pAVCodecContextVideo->height, 1);
+                                                SwsContext* encoderSwsContext= sws_getContext(pAVCodecContextVideo->width, pAVCodecContextVideo->height, pAVCodecContextVideo->pix_fmt, pAVCodecContextVideo->width, pAVCodecContextVideo->height, AV_PIX_FMT_RGB24, SWS_BICUBIC, nullptr, nullptr, nullptr);{
+                                                    sws_scale(encoderSwsContext, pAVFrame->data, pAVFrame->linesize, 0, pAVCodecContextVideo->height, pAVFrameRGB->data, pAVFrameRGB->linesize);
+                                                    QImage Image= QImage(pAVCodecContextVideo->width, pAVCodecContextVideo->height, QImage::Format_RGB32);
+                                                    AVFrame2QImage(pAVFrameRGB, Image, pAVCodecContextVideo->width, pAVCodecContextVideo->height);
+                                                    if (!Image.isNull()) {
+                                                        if (DoStart) {
+                                                            if (pAVFrame->pts!= AV_NOPTS_VALUE) {
+                                                                if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnImage(Image);
+                                                                emit OnImage(Image);
+                                                            }
+                                                        }
+                                                    }
+                                                }{
+                                                    sws_freeContext(encoderSwsContext);
+                                                }
+                                            }{
+                                                free(Buffer);
                                             }
+                                        }{
+                                            av_frame_free(&pAVFrameRGB);
+                                        }
+                                    }
+                                    av_frame_unref(pAVFrame);
+                                }
+                            }
+                            if (RealTime) {
+                                if (pAVPacket->dts== AV_NOPTS_VALUE) {
+                                    QString Result= QString("Decoding Time Stamp error, stream index: %1, id: %2, type: %3")
+                                    .arg(pAVPacket->stream_index)
+                                        .arg(pAVFormatContextIn->streams[pAVPacket->stream_index]->id)
+                                        .arg(AVMediaTypeToString(pAVFormatContextIn->streams[pAVPacket->stream_index]->codecpar->codec_type));
+                                    emit UpdateLog(Result);
+                                } else {
+                                    AVRational time_base= pAVFormatContextIn->streams[pAVPacket->stream_index]->time_base;
+                                    AVRational time_base_q= {1, static_cast<int>(static_cast<double>(AV_TIME_BASE) / Speed)};
+                                    int64_t DecodingTimeStampTemp= av_rescale_q(pAVPacket->dts, time_base, time_base_q);
+                                    if (DecodingTimeStampStart< 0) {
+                                        DecodingTimeStampStart= DecodingTimeStampTemp;
+                                        TimeStart= av_gettime();
+                                    } else {
+                                        int64_t nowTime= av_gettime()- TimeStart;
+                                        if ((DecodingTimeStampTemp- DecodingTimeStampStart)> nowTime) {
+                                            av_usleep(DecodingTimeStampTemp- DecodingTimeStampStart- nowTime);
                                         }
                                     }
                                 }
                             }
                             av_packet_unref(pAVPacket);
-                        } else DoStart= false;
+                        } else {
+                            char Result[AV_ERROR_MAX_STRING_SIZE];
+                            av_make_error_string(Result, AV_ERROR_MAX_STRING_SIZE, Ret);
+                            emit UpdateLog(QString(Result));
+                            DoStart= false;
+                        }
                     }
                     if (pSwrContext) swr_free(&pSwrContext);
                     av_packet_free(&pAVPacket);
