@@ -108,24 +108,35 @@ void QFMainWindow::on_QTBFilePath_clicked() {
         ui->QLEFilePath->setText(FileDialog.selectedFiles().at(0));
     }
 }
-
 void QFMainWindow::OnAudio(const uchar* data, int Length) {
-    if (ui->QCBRealTime->isChecked()) {
-        while (pQAudioOutput->bytesFree()< Length) usleep(1000);
+    if (ui->QCBRealTime->isChecked() && ui->QCBAudio->isChecked()) {
+        printf("pQAudioOutput->bytesFree() in: %d, Length: %d\n", pQAudioOutput->bytesFree(), Length);
+        fflush(stdout);
+        while (pQAudioOutput->bytesFree()< Length) usleep(100);
         pQIODevice->write(reinterpret_cast<const char*>(data), Length);
     }
 }
 
 void QFMainWindow::OnAudioType(int SampleRate, int ChannelCount) {
-    QAudioFormat AudioFormat= pQAudioOutput->format();
+    QAudioFormat AudioFormat;
+    AudioFormat.setByteOrder(QAudioFormat::LittleEndian);
     AudioFormat.setChannelCount(ChannelCount);
-    AudioFormat.setSampleRate(SampleRate);
-    qreal Volume= pQAudioOutput->volume();
-    delete pQAudioOutput;
-    pQAudioOutput= new QAudioOutput(AudioFormat, this);
-    pQAudioOutput->setVolume(Volume);
-    pQIODevice= pQAudioOutput->start();
-    ui->QLAudioType->setText("SampleRate: "+ QString::number(SampleRate)+ ", ChannelCount: "+ QString::number(ChannelCount));
+    AudioFormat.setCodec("audio/pcm");
+    AudioFormat.setSampleRate(44100);
+    AudioFormat.setSampleSize(16);
+    AudioFormat.setSampleType(QAudioFormat::SignedInt);
+    QAudioDeviceInfo AudioDeviceInfo(QAudioDeviceInfo::defaultOutputDevice());
+    if (AudioDeviceInfo.isFormatSupported(AudioFormat)) {
+        qreal Volume= pQAudioOutput->volume();
+        delete pQAudioOutput;
+        pQAudioOutput= new QAudioOutput(AudioFormat, this);
+        pQAudioOutput->setVolume(Volume);
+        pQIODevice= pQAudioOutput->start();
+        ui->QLAudioType->setText("SampleRate: "+ QString::number(SampleRate)+ ", ChannelCount: "+ QString::number(ChannelCount));
+    } else {
+        UpdateLog(tr("Unsupported AudioFormat!!!"));
+        ui->QLAudioType->setText("SampleRate: "+ QString::number(SampleRate)+ ", ChannelCount: "+ QString::number(ChannelCount)+ tr(", unsupported audio format!!!"));
+    }
 }
 
 void QFMainWindow::OnConnectionState(ConnectionStates ConnectionState) {
