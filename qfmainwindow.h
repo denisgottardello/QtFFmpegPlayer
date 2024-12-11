@@ -1,8 +1,6 @@
 #ifndef QFMAINWINDOW_H
 #define QFMAINWINDOW_H
 
-#include "QAudioFormat"
-#include "QAudioOutput"
 #include "QDebug"
 #include "QFile"
 #include "QFileDialog"
@@ -46,8 +44,8 @@ private:
     Ui::QFMainWindow *ui;
     int PachetCount, Frames;
     QAudioOutput *pQAudioOutput= nullptr;
-    QIODevice *pQIODevice= nullptr;
     QFile QFFileIn;
+    QIODevice *pQIODevice= nullptr;
     QThFFmpegPlayer *pQThFFmpegPlayer= nullptr;
 
 };

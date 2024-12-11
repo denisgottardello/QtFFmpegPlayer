@@ -34,14 +34,14 @@ QFMainWindow::QFMainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::QF
             }
         }
     }
-    pQAudioOutput= new QAudioOutput(AudioFormat, this);
-    pQAudioOutput->setVolume(0.5);
+    QAudioDeviceInfo AudioDeviceInfo= QAudioDeviceInfo::defaultOutputDevice();
+    pQAudioOutput= new QAudioOutput(AudioDeviceInfo, AudioFormat, nullptr);
+    pQAudioOutput->setVolume(ui->QDSBVolume->value());
     pQIODevice= pQAudioOutput->start();
 }
 
 QFMainWindow::~QFMainWindow() {
     if (pQThFFmpegPlayer) delete pQThFFmpegPlayer;
-    if (pQAudioOutput) delete pQAudioOutput;
     delete ui;
 }
 
@@ -50,18 +50,19 @@ void QFMainWindow::on_QDSBSpeed_valueChanged(double arg1) {
 }
 
 void QFMainWindow::on_QDSBVolume_valueChanged(double arg1) {
-    pQAudioOutput->setVolume(arg1);
+    if (pQThFFmpegPlayer) pQThFFmpegPlayer->VolumeSet(arg1);
 }
 
 void QFMainWindow::on_QPBPlay_clicked() {
     ui->QPBPlay->setEnabled(false);
     Frames= 0;
+    ui->QLFrames->clear();;
     if (ui->QRBCallbackStream->isChecked()) {
         QFFileIn.setFileName(ui->QLEFilePath->text());
         if (QFFileIn.open(QIODevice::ReadOnly)) {
             PachetCount= 0;
             pQThFFmpegPlayer= new QThFFmpegPlayer("", ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_CALLBACK);
-            connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
+            //connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnAudioType(int,int)), this, SLOT(OnAudioType(int,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnConnectionState(ConnectionStates)), this, SLOT(OnConnectionState(ConnectionStates)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnEnd()), this, SLOT(OnEnd()));
@@ -69,17 +70,19 @@ void QFMainWindow::on_QPBPlay_clicked() {
             connect(pQThFFmpegPlayer, SIGNAL(OnPacketRead(uint8_t*,int,int*)), this, SLOT(OnPacketRead(uint8_t*,int,int*)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(UpdateLog(QString)), this, SLOT(UpdateLog(QString)));
             pQThFFmpegPlayer->Speed= ui->QDSBSpeed->value();
+            pQAudioOutput->moveToThread(pQThFFmpegPlayer);
             pQThFFmpegPlayer->start();
         }
     } else if (ui->QRBFFmpegStream->isChecked()) {
         pQThFFmpegPlayer= new QThFFmpegPlayer(ui->QLEFilePath->text(), ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_STREAM);
-        connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
+        //connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
         connect(pQThFFmpegPlayer, SIGNAL(OnAudioType(int,int)), this, SLOT(OnAudioType(int,int)), Qt::BlockingQueuedConnection);
         connect(pQThFFmpegPlayer, SIGNAL(OnConnectionState(ConnectionStates)), this, SLOT(OnConnectionState(ConnectionStates)), Qt::BlockingQueuedConnection);
         connect(pQThFFmpegPlayer, SIGNAL(OnEnd()), this, SLOT(OnEnd()));
         connect(pQThFFmpegPlayer, SIGNAL(OnImage(QImage)), this, SLOT(OnImage(QImage)), Qt::BlockingQueuedConnection);
         connect(pQThFFmpegPlayer, SIGNAL(UpdateLog(QString)), this, SLOT(UpdateLog(QString)));
         pQThFFmpegPlayer->Speed= ui->QDSBSpeed->value();
+        pQAudioOutput->moveToThread(pQThFFmpegPlayer);
         pQThFFmpegPlayer->start();
     }
     ui->QPBStop->setEnabled(true);
@@ -93,7 +96,6 @@ void QFMainWindow::on_QPBQuit_clicked() {
 void QFMainWindow::on_QPBStop_clicked() {
     ui->QPBStop->setEnabled(false);
     if (pQThFFmpegPlayer) {
-        disconnect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)));
         disconnect(pQThFFmpegPlayer, SIGNAL(OnImage(QImage)), this, SLOT(OnImage(QImage)));
         pQThFFmpegPlayer->Stop();
     }
@@ -108,6 +110,7 @@ void QFMainWindow::on_QTBFilePath_clicked() {
         ui->QLEFilePath->setText(FileDialog.selectedFiles().at(0));
     }
 }
+
 void QFMainWindow::OnAudio(const uchar* data, int Length) {
     if (ui->QCBRealTime->isChecked() && ui->QCBAudio->isChecked()) {
         printf("pQAudioOutput->bytesFree() in: %d, Length: %d\n", pQAudioOutput->bytesFree(), Length);
@@ -122,15 +125,17 @@ void QFMainWindow::OnAudioType(int SampleRate, int ChannelCount) {
     AudioFormat.setByteOrder(QAudioFormat::LittleEndian);
     AudioFormat.setChannelCount(ChannelCount);
     AudioFormat.setCodec("audio/pcm");
-    AudioFormat.setSampleRate(44100);
+    AudioFormat.setSampleRate(SampleRate);
     AudioFormat.setSampleSize(16);
     AudioFormat.setSampleType(QAudioFormat::SignedInt);
     QAudioDeviceInfo AudioDeviceInfo(QAudioDeviceInfo::defaultOutputDevice());
     if (AudioDeviceInfo.isFormatSupported(AudioFormat)) {
         qreal Volume= pQAudioOutput->volume();
         delete pQAudioOutput;
-        pQAudioOutput= new QAudioOutput(AudioFormat, this);
+        QAudioDeviceInfo AudioDeviceInfo= QAudioDeviceInfo::defaultOutputDevice();
+        pQAudioOutput= new QAudioOutput(AudioDeviceInfo, AudioFormat);
         pQAudioOutput->setVolume(Volume);
+        pQAudioOutput->moveToThread(pQThFFmpegPlayer);
         pQIODevice= pQAudioOutput->start();
         ui->QLAudioType->setText("SampleRate: "+ QString::number(SampleRate)+ ", ChannelCount: "+ QString::number(ChannelCount));
     } else {

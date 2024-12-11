@@ -10,6 +10,8 @@ extern "C" {
     #include "libswscale/swscale.h"
     #include "libswresample/swresample.h"
 }
+#include "QAudioFormat"
+#include "QAudioOutput"
 #include "qcffmpegplayecommons.h"
 #include "QDateTime"
 #include "QImage"
@@ -32,11 +34,13 @@ public:
     ~QThFFmpegPlayer();
     bool DoStart= true;
     double Speed= 1;
+    double Volume= 1;
     QIFFmpegPlayerInterface *pQIFFmpegPlayerInterface= nullptr;
     QDateTime QDTLastPacket;
     QElapsedTimer ElapsedTimer;
     int QThFFmpegPlayerReadPacket(uint8_t *pBuffer, int pBufferSize);
     void Stop();
+    void VolumeSet(double Value);
 
 signals:
     void OnAudio(const uchar* data, int Length);

@@ -105,12 +105,26 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
             AVFrame *pAVFrame= av_frame_alloc();
             if (!pAVFrame) emit UpdateLog("av_frame_alloc Error!!!");
             else {
+                QAudioOutput *pQAudioOutput= nullptr;
+                QIODevice *pQIODevice= nullptr;
                 AVPacket *pAVPacket= av_packet_alloc();
                 if (!pAVPacket) emit UpdateLog("av_packet_alloc Error!!!");
                 else {
                     pAVPacket->data= nullptr;
                     pAVPacket->size= 0;
                     if (pAVCodecContextAudio) {
+                        QAudioFormat AudioFormat;
+                        AudioFormat.setByteOrder(QAudioFormat::LittleEndian);
+                        AudioFormat.setChannelCount(pAVCodecContextAudio->ch_layout.nb_channels);
+                        AudioFormat.setCodec("audio/pcm");
+                        AudioFormat.setSampleRate(pAVCodecContextAudio->sample_rate);
+                        AudioFormat.setSampleSize(16);
+                        AudioFormat.setSampleType(QAudioFormat::SignedInt);
+                        QAudioDeviceInfo AudioDeviceInfo= QAudioDeviceInfo::defaultOutputDevice();
+                        pQAudioOutput= new QAudioOutput(AudioDeviceInfo, AudioFormat, nullptr);
+                        pQAudioOutput->moveToThread(this);
+                        pQAudioOutput->setVolume(Volume);
+                        pQIODevice= pQAudioOutput->start();
                         if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnAudioType(pAVCodecContextAudio->sample_rate, pAVCodecContextAudio->ch_layout.nb_channels);
                         emit OnAudioType(pAVCodecContextAudio->sample_rate, pAVCodecContextAudio->ch_layout.nb_channels);
                         printf("sample_rate in: %d, sample_fmt in: %d, channels: %d, pAVFrame->nb_samples: %d\n", pAVCodecContextAudio->sample_rate, pAVCodecContextAudio->sample_fmt, pAVCodecContextAudio->ch_layout.nb_channels, pAVFrame->nb_samples);
@@ -192,7 +206,7 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                         //
                                         // https://www.ffmpeg.org/doxygen/2.3/resampling__audio_8c_source.html
                                         // https://ffmpeg.org/doxygen/7.0/resample_audio_8c-example.html
-                                        SwrContext *pSwrContext= nullptr;
+                                        /*SwrContext *pSwrContext= nullptr;
                                         pSwrContext= swr_alloc();
                                         if (!pSwrContext) emit UpdateLog("swr_alloc Error!!!");
                                         else {
@@ -206,7 +220,11 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                             else {
                                                 uint8_t **BufferOut= nullptr;
                                                 int LineSizeDest;
-                                                int SamplesDest= av_rescale_rnd(pAVFrame->nb_samples, 44100, pAVCodecContextAudio->sample_rate, AV_ROUND_UP);
+                                                //int SamplesDest= av_rescale_rnd(pAVFrame->nb_samples, 44100, pAVCodecContextAudio->sample_rate, AV_ROUND_UP);
+                                                int SamplesDest= av_rescale_rnd(swr_get_delay(pSwrContext, pAVCodecContextAudio->sample_rate) + pAVFrame->nb_samples,
+                                                                                 44100,
+                                                                                 pAVCodecContextAudio->sample_rate,
+                                                                                 AV_ROUND_UP);
                                                 Ret= av_samples_alloc_array_and_samples(&BufferOut,     // audio_data
                                                                                          &LineSizeDest, // linesize
                                                                                          pAVCodecContextAudio->ch_layout.nb_channels,   // nb_channels
@@ -233,16 +251,16 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                                 av_freep(&BufferOut);
                                             }
                                             swr_free(&pSwrContext);
-                                        }
+                                        }*/
                                         // end
                                         //
                                         //
                                         // begin
-                                        /*SwrContext *pSwrContext= nullptr;
+                                        SwrContext *pSwrContext= nullptr;
                                         Ret= swr_alloc_set_opts2(&pSwrContext,
                                                                   &pAVCodecContextAudio->ch_layout,     // out_ch_layout
                                                                   AV_SAMPLE_FMT_S16,                    // out_sample_fmt
-                                                                  44100,                                // out_sample_rate
+                                                                  pAVCodecContextAudio->sample_rate,    // out_sample_rate
                                                                   &pAVCodecContextAudio->ch_layout,     // in_ch_layout
                                                                   pAVCodecContextAudio->sample_fmt,     // in_sample_fmt
                                                                   pAVCodecContextAudio->sample_rate,    // in_sample_rate
@@ -250,7 +268,7 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                                                   nullptr);
                                         if (Ret== 0) {
                                             if (swr_init(pSwrContext)== 0) {
-                                                int OutCount= (int64_t)pAVFrame->nb_samples * 44100 / pAVFrame->sample_rate + 256;
+                                                int OutCount= (int64_t)pAVFrame->nb_samples * pAVCodecContextAudio->sample_rate / pAVFrame->sample_rate + 256;
                                                 int OutSize= av_samples_get_buffer_size(nullptr,        // calculated linesize, may be NULL
                                                                                          pAVFrame->ch_layout.nb_channels,   // the number of channels
                                                                                          OutCount,      // 	the number of samples in a single channel
@@ -267,6 +285,19 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                                             int RetOut= Ret * pAVCodecContextAudio->ch_layout.nb_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
                                                             if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnAudio(BufferOut, RetOut);
                                                             emit OnAudio(BufferOut, RetOut);
+                                                            if (pQAudioOutput) {
+                                                                if (pQAudioOutput->bytesFree()< RetOut) {
+                                                                    printf("\npQAudioOutput->bytesFree(): %d, RetOut: %d before\n", pQAudioOutput->bytesFree(), RetOut);
+                                                                    fflush(stdout);
+                                                                    //while (pQAudioOutput->bytesFree()< RetOut) usleep(100);
+                                                                    //
+                                                                    // ?????????????????? The stream is not fluent
+                                                                    //
+                                                                    printf("pQAudioOutput->bytesFree(): %d, RetOut: %d after\n", pQAudioOutput->bytesFree(), RetOut);
+                                                                    fflush(stdout);
+                                                                }
+                                                            }
+                                                            if (pQIODevice) pQIODevice->write(reinterpret_cast<const char*>(BufferOut), RetOut);
                                                         }
                                                     }{
                                                         delete []BufferOut;
@@ -274,7 +305,7 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                                 }
                                             }
                                             if (pSwrContext) swr_free(&pSwrContext);
-                                        }*/
+                                        }
                                         // end
                                         //
                                     }
@@ -323,6 +354,7 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                     }
                     av_packet_free(&pAVPacket);
                 }
+                if (pQAudioOutput) delete pQAudioOutput;
                 av_frame_free(&pAVFrame);
             }
         } else emit UpdateLog("CodecContextOpen Error!!!");
@@ -401,4 +433,8 @@ int QThFFmpegPlayer::QThFFmpegPlayerReadPacket(uint8_t *pBuffer, int pBufferSize
     emit OnPacketRead(pBuffer, pBufferSize, &BytesIn);
     if (!BytesIn) return AVERROR_EOF;
     else return BytesIn;
+}
+
+void QThFFmpegPlayer::VolumeSet(double Value) {
+    Volume= Value;
 }
