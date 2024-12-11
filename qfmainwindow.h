@@ -44,6 +44,7 @@ private:
     Ui::QFMainWindow *ui;
     int PachetCount, Frames;
     QAudioOutput *pQAudioOutput= nullptr;
+    QByteArray QBAAudioBufferOut;
     QFile QFFileIn;
     QIODevice *pQIODevice= nullptr;
     QThFFmpegPlayer *pQThFFmpegPlayer= nullptr;

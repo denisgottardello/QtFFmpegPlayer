@@ -30,7 +30,7 @@ public:
         FFMPEG_SOURCE_CALLBACK,
         FFMPEG_SOURCE_STREAM,
     };
-    QThFFmpegPlayer(QString Path, bool RealTime= true, FFMPEGSourceTypes FFMPEGSourceType= FFMPEG_SOURCE_STREAM);
+    QThFFmpegPlayer(QString Path, bool RealTime= true, FFMPEGSourceTypes FFMPEGSourceType= FFMPEG_SOURCE_STREAM, bool AudioSupport= false);
     ~QThFFmpegPlayer();
     bool DoStart= true;
     double Speed= 1;
@@ -52,7 +52,7 @@ signals:
     void UpdateLog(QString Log);
 
 private:
-    bool RealTime;
+    bool RealTime, AudioSupport;
     FFMPEGSourceTypes FFMPEGSourceType;
     int Socket;
     int64_t DecodingTimeStampStart= -1;
