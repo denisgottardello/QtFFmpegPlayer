@@ -28,6 +28,7 @@ QFMainWindow::QFMainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::QF
 }
 
 QFMainWindow::~QFMainWindow() {
+    if (pQAudioOutput) delete pQAudioOutput;
     if (pQThFFmpegPlayer) delete pQThFFmpegPlayer;
     delete ui;
 }

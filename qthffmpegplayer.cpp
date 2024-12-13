@@ -87,7 +87,7 @@ void QThFFmpegPlayer::run() {
     if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnEnd();
     emit OnEnd();
 }
-#include "QBuffer"
+
 void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
     if (avformat_find_stream_info(pAVFormatContextIn, nullptr)< 0) emit UpdateLog("avformat_find_stream_info Error!!!");
     else {
