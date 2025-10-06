@@ -106,7 +106,11 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
             AVFrame *pAVFrame= av_frame_alloc();
             if (!pAVFrame) emit UpdateLog("av_frame_alloc Error!!!");
             else {
-                QAudioOutput *pQAudioOutput= nullptr;
+                #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+                    QAudioOutput *pQAudioOutput= nullptr;
+                #else
+                    QAudioSink *pQAudioSink= nullptr;
+                #endif
                 QByteArray QBAAudioBufferOut;
                 QIODevice *pQIODevice= nullptr;
                 AVPacket *pAVPacket= av_packet_alloc();
@@ -116,18 +120,32 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                     pAVPacket->size= 0;
                     if (pAVCodecContextAudio) {
                         if (AudioSupport) {
-                            QAudioFormat AudioFormat;
-                            AudioFormat.setByteOrder(QAudioFormat::LittleEndian);
-                            AudioFormat.setChannelCount(pAVCodecContextAudio->ch_layout.nb_channels);
-                            AudioFormat.setCodec("audio/pcm");
-                            AudioFormat.setSampleRate(pAVCodecContextAudio->sample_rate);
-                            AudioFormat.setSampleSize(16);
-                            AudioFormat.setSampleType(QAudioFormat::SignedInt);
-                            QAudioDeviceInfo AudioDeviceInfo= QAudioDeviceInfo::defaultOutputDevice();
-                            pQAudioOutput= new QAudioOutput(AudioDeviceInfo, AudioFormat, nullptr);
-                            pQAudioOutput->moveToThread(this);
-                            pQAudioOutput->setVolume(Volume);
-                            pQIODevice= pQAudioOutput->start();
+                            #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+                                QAudioFormat AudioFormat;
+                                AudioFormat.setByteOrder(QAudioFormat::LittleEndian);
+                                AudioFormat.setChannelCount(pAVCodecContextAudio->ch_layout.nb_channels);
+                                AudioFormat.setCodec("audio/pcm");
+                                AudioFormat.setSampleRate(pAVCodecContextAudio->sample_rate);
+                                AudioFormat.setSampleSize(16);
+                                AudioFormat.setSampleType(QAudioFormat::SignedInt);
+                                QAudioDeviceInfo AudioDeviceInfo= QAudioDeviceInfo::defaultOutputDevice();
+                                pQAudioOutput= new QAudioOutput(AudioDeviceInfo, AudioFormat, nullptr);
+                                pQAudioOutput->moveToThread(this);
+                                pQAudioOutput->setVolume(Volume);
+                                pQIODevice= pQAudioOutput->start();
+                            #else
+                                QAudioFormat AudioFormat;
+                                AudioFormat.setChannelCount(2);
+                                AudioFormat.setSampleFormat(QAudioFormat::Int16);
+                                AudioFormat.setSampleRate(44100);
+                                QAudioDevice pQAudioDevice= QMediaDevices::defaultAudioOutput();
+                                if (!pQAudioDevice.isFormatSupported(AudioFormat)) {
+                                    AudioFormat= pQAudioDevice.preferredFormat();
+                                }
+                                pQAudioSink= new QAudioSink(pQAudioDevice, AudioFormat);
+                                pQIODevice= pQAudioSink->start();
+                                pQAudioSink->setVolume(Volume);
+                            #endif
                         }
                         if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnAudioType(pAVCodecContextAudio->sample_rate, pAVCodecContextAudio->ch_layout.nb_channels);
                         emit OnAudioType(pAVCodecContextAudio->sample_rate, pAVCodecContextAudio->ch_layout.nb_channels);
@@ -200,7 +218,11 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                                             emit OnAudio(BufferOut, RetOut);
                                                             if (AudioSupport) {
                                                                 QBAAudioBufferOut.append(reinterpret_cast<const char*>(BufferOut), RetOut);
-                                                                pQAudioOutput->setVolume(Volume);
+                                                                #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+                                                                    pQAudioOutput->setVolume(Volume);
+                                                                #else
+                                                                    pQAudioSink->setVolume(Volume);
+                                                                #endif
                                                             }
                                                         }
                                                     }{
@@ -212,16 +234,23 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                         }
                                         // end
                                         //
-                                        if (pQIODevice && pQAudioOutput && AudioSupport) {
-                                            int BytesFree= pQAudioOutput->bytesFree();
-                                            if (BytesFree<= QBAAudioBufferOut.length()) {
-                                                int BytesOut= pQIODevice->write(reinterpret_cast<const char*>(QBAAudioBufferOut.data()), BytesFree);
-                                                QBAAudioBufferOut.remove(0, BytesOut);
-                                            } else {
-                                                int BytesOut= pQIODevice->write(reinterpret_cast<const char*>(QBAAudioBufferOut.data()), QBAAudioBufferOut.length());
-                                                QBAAudioBufferOut.remove(0, BytesOut);
+                                        #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+                                            if (pQIODevice && pQAudioOutput && AudioSupport) {
+                                                int BytesFree= pQAudioOutput->bytesFree();
+                                                if (BytesFree<= QBAAudioBufferOut.length()) {
+                                                    int BytesOut= pQIODevice->write(reinterpret_cast<const char*>(QBAAudioBufferOut.data()), BytesFree);
+                                                    QBAAudioBufferOut.remove(0, BytesOut);
+                                                } else {
+                                                    int BytesOut= pQIODevice->write(reinterpret_cast<const char*>(QBAAudioBufferOut.data()), QBAAudioBufferOut.length());
+                                                    QBAAudioBufferOut.remove(0, BytesOut);
+                                                }
                                             }
-                                        }
+                                        #else
+                                            if (pQIODevice && pQIODevice->isWritable()) {
+                                                qint64 BytesOut= pQIODevice->write(QBAAudioBufferOut);
+                                                if (BytesOut> 0) QBAAudioBufferOut.remove(0, BytesOut);
+                                            }
+                                        #endif
                                     }
                                 }
                             } else if (pAVPacket->stream_index== StreamVideoIn) {
@@ -268,7 +297,11 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                     }
                     av_packet_free(&pAVPacket);
                 }
-                if (pQAudioOutput) delete pQAudioOutput;
+                #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+                    if (pQAudioOutput) delete pQAudioOutput;
+                #else
+                    if (pQAudioSink) delete pQAudioSink;
+                #endif
                 av_frame_free(&pAVFrame);
             }
         } else emit UpdateLog("CodecContextOpen Error!!!");

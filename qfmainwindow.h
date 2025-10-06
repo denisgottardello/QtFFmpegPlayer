@@ -43,11 +43,15 @@ private slots:
 private:
     Ui::QFMainWindow *ui;
     int PachetCount, Frames;
-    QAudioOutput *pQAudioOutput= nullptr;
     QByteArray QBAAudioBufferOut;
     QFile QFFileIn;
     QIODevice *pQIODevice= nullptr;
     QThFFmpegPlayer *pQThFFmpegPlayer= nullptr;
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        QAudioOutput *pQAudioOutput= nullptr;
+    #else
+        QAudioSink *pQAudioSink= nullptr;
+    #endif
 
 };
 

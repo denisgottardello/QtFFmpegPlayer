@@ -5,30 +5,51 @@ QFMainWindow::QFMainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::QF
     ui->setupUi(this);
     ui->QLImage->setBackgroundRole(QPalette::Dark);
     ui->QSAImage->setBackgroundRole(QPalette::Dark);
-    QAudioFormat AudioFormat;
-    AudioFormat.setByteOrder(QAudioFormat::LittleEndian);
-    AudioFormat.setChannelCount(2);
-    AudioFormat.setCodec("audio/pcm");
-    AudioFormat.setSampleRate(44100);
-    AudioFormat.setSampleSize(16);
-    AudioFormat.setSampleType(QAudioFormat::SignedInt);
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        QAudioFormat AudioFormat;
+        AudioFormat.setByteOrder(QAudioFormat::LittleEndian);
+        AudioFormat.setChannelCount(2);
+        AudioFormat.setCodec("audio/pcm");
+        AudioFormat.setSampleRate(44100);
+        AudioFormat.setSampleSize(16);
+        AudioFormat.setSampleType(QAudioFormat::SignedInt);
+    #else
+        QAudioFormat AudioFormat;
+        AudioFormat.setChannelCount(2);
+        AudioFormat.setSampleFormat(QAudioFormat::Int16);
+        AudioFormat.setSampleRate(44100);
+    #endif
     for (int count= 0; count< QCoreApplication::arguments().count(); count++) {
         QString Parameter= QString(QCoreApplication::arguments().at(count));
         if (Parameter.length()> QString("--FilePath=").length()) {
-            if (Parameter.leftRef(QString("--FilePath=").length()).toString().compare("--FilePath=")== 0) {
+            if (Parameter.left(QString("--FilePath=").length()).compare("--FilePath=")== 0) {
                 ui->QLEFilePath->setText(Parameter.right(Parameter.length()- QString("--FilePath=").length()));
                 break;
             }
         }
     }
-    QAudioDeviceInfo AudioDeviceInfo= QAudioDeviceInfo::defaultOutputDevice();
-    pQAudioOutput= new QAudioOutput(AudioDeviceInfo, AudioFormat, nullptr);
-    pQAudioOutput->setVolume(ui->QDSBVolume->value());
-    pQIODevice= pQAudioOutput->start();
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        QAudioDeviceInfo AudioDeviceInfo= QAudioDeviceInfo::defaultOutputDevice();
+        pQAudioOutput= new QAudioOutput(AudioDeviceInfo, AudioFormat, nullptr);
+        pQAudioOutput->setVolume(ui->QDSBVolume->value());
+        pQIODevice= pQAudioOutput->start();
+    #else
+        QAudioDevice pQAudioDevice= QMediaDevices::defaultAudioOutput();
+        if (!pQAudioDevice.isFormatSupported(AudioFormat)) {
+            AudioFormat= pQAudioDevice.preferredFormat();
+        }
+        pQAudioSink= new QAudioSink(pQAudioDevice, AudioFormat);
+        pQIODevice= pQAudioSink->start();
+        pQAudioSink->setVolume(ui->QDSBVolume->value());
+    #endif
 }
 
 QFMainWindow::~QFMainWindow() {
-    if (pQAudioOutput) delete pQAudioOutput;
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        if (pQAudioOutput) delete pQAudioOutput;
+    #else
+        if (pQAudioSink) delete pQAudioSink;
+    #endif
     if (pQThFFmpegPlayer) delete pQThFFmpegPlayer;
     delete ui;
 }
@@ -38,7 +59,11 @@ void QFMainWindow::on_QDSBSpeed_valueChanged(double arg1) {
 }
 
 void QFMainWindow::on_QDSBVolume_valueChanged(double arg1) {
-    pQAudioOutput->setVolume(arg1);
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        pQAudioOutput->setVolume(arg1);
+    #else
+        pQAudioSink->setVolume(arg1);
+    #endif
     if (pQThFFmpegPlayer) pQThFFmpegPlayer->VolumeSet(arg1);
 }
 
@@ -102,38 +127,64 @@ void QFMainWindow::on_QTBFilePath_clicked() {
 void QFMainWindow::OnAudio(const uchar* data, int Length) {
     if (ui->QCBRealTime->isChecked() && ui->QCBAudio->isChecked()) {
         QBAAudioBufferOut.append(reinterpret_cast<const char*>(data), Length);
-        int BytesFree= pQAudioOutput->bytesFree();
-        if (BytesFree<= QBAAudioBufferOut.length()) {
-            int BytesOut= pQIODevice->write(reinterpret_cast<const char*>(QBAAudioBufferOut.data()), BytesFree);
-            if (BytesOut> 0) QBAAudioBufferOut.remove(0, BytesOut);
-        } else {
-            int BytesOut= pQIODevice->write(reinterpret_cast<const char*>(QBAAudioBufferOut.data()), QBAAudioBufferOut.length());
-            if (BytesOut> 0) QBAAudioBufferOut.remove(0, BytesOut);
-        }
+        #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+            int BytesFree= pQAudioOutput->bytesFree();
+            if (BytesFree<= QBAAudioBufferOut.length()) {
+                int BytesOut= pQIODevice->write(reinterpret_cast<const char*>(QBAAudioBufferOut.data()), BytesFree);
+                if (BytesOut> 0) QBAAudioBufferOut.remove(0, BytesOut);
+            } else {
+                int BytesOut= pQIODevice->write(reinterpret_cast<const char*>(QBAAudioBufferOut.data()), QBAAudioBufferOut.length());
+                if (BytesOut> 0) QBAAudioBufferOut.remove(0, BytesOut);
+            }
+        #else
+            if (pQIODevice && pQIODevice->isWritable()) {
+                qint64 BytesOut= pQIODevice->write(QBAAudioBufferOut);
+                if (BytesOut> 0) QBAAudioBufferOut.remove(0, BytesOut);
+            }
+        #endif
     }
 }
 
 void QFMainWindow::OnAudioType(int SampleRate, int ChannelCount) {
-    QAudioFormat AudioFormat;
-    AudioFormat.setByteOrder(QAudioFormat::LittleEndian);
-    AudioFormat.setChannelCount(ChannelCount);
-    AudioFormat.setCodec("audio/pcm");
-    AudioFormat.setSampleRate(SampleRate);
-    AudioFormat.setSampleSize(16);
-    AudioFormat.setSampleType(QAudioFormat::SignedInt);
-    QAudioDeviceInfo AudioDeviceInfo(QAudioDeviceInfo::defaultOutputDevice());
-    if (AudioDeviceInfo.isFormatSupported(AudioFormat)) {
-        qreal Volume= pQAudioOutput->volume();
-        delete pQAudioOutput;
-        QAudioDeviceInfo AudioDeviceInfo= QAudioDeviceInfo::defaultOutputDevice();
-        pQAudioOutput= new QAudioOutput(AudioDeviceInfo, AudioFormat);
-        pQAudioOutput->setVolume(Volume);
-        pQIODevice= pQAudioOutput->start();
-        ui->QLAudioType->setText("SampleRate: "+ QString::number(SampleRate)+ ", ChannelCount: "+ QString::number(ChannelCount));
-    } else {
-        UpdateLog(tr("Unsupported AudioFormat!!!"));
-        ui->QLAudioType->setText("SampleRate: "+ QString::number(SampleRate)+ ", ChannelCount: "+ QString::number(ChannelCount)+ tr(", unsupported audio format!!!"));
-    }
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        QAudioFormat AudioFormat;
+        AudioFormat.setByteOrder(QAudioFormat::LittleEndian);
+        AudioFormat.setChannelCount(ChannelCount);
+        AudioFormat.setCodec("audio/pcm");
+        AudioFormat.setSampleRate(SampleRate);
+        AudioFormat.setSampleSize(16);
+        AudioFormat.setSampleType(QAudioFormat::SignedInt);
+        QAudioDeviceInfo AudioDeviceInfo(QAudioDeviceInfo::defaultOutputDevice());
+        if (AudioDeviceInfo.isFormatSupported(AudioFormat)) {
+            qreal Volume= pQAudioOutput->volume();
+            delete pQAudioOutput;
+            QAudioDeviceInfo AudioDeviceInfo= QAudioDeviceInfo::defaultOutputDevice();
+            pQAudioOutput= new QAudioOutput(AudioDeviceInfo, AudioFormat);
+            pQAudioOutput->setVolume(Volume);
+            pQIODevice= pQAudioOutput->start();
+            ui->QLAudioType->setText("SampleRate: "+ QString::number(SampleRate)+ ", ChannelCount: "+ QString::number(ChannelCount));
+        } else {
+            UpdateLog(tr("Unsupported AudioFormat!!!"));
+            ui->QLAudioType->setText("SampleRate: "+ QString::number(SampleRate)+ ", ChannelCount: "+ QString::number(ChannelCount)+ tr(", unsupported audio format!!!"));
+        }
+    #else
+        if (pQAudioSink) {
+            pQAudioSink->stop();
+            delete pQAudioSink;
+            pQAudioSink= nullptr;
+        }
+        QAudioFormat AudioFormat;
+        AudioFormat.setChannelCount(ChannelCount);
+        AudioFormat.setSampleFormat(QAudioFormat::Int16);
+        AudioFormat.setSampleRate(SampleRate);
+        QAudioDevice pQAudioDevice= QMediaDevices::defaultAudioOutput();
+        if (!pQAudioDevice.isFormatSupported(AudioFormat)) {
+            AudioFormat= pQAudioDevice.preferredFormat();
+        }
+        pQAudioSink= new QAudioSink(pQAudioDevice, AudioFormat);
+        pQIODevice= pQAudioSink->start();
+        pQAudioSink->setVolume(ui->QDSBVolume->value());
+    #endif
 }
 
 void QFMainWindow::OnConnectionState(ConnectionStates ConnectionState) {

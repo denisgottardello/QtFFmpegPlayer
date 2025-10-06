@@ -10,12 +10,18 @@ extern "C" {
     #include "libswscale/swscale.h"
     #include "libswresample/swresample.h"
 }
-#include "QAudioFormat"
-#include "QAudioOutput"
 #include "qcffmpegplayecommons.h"
 #include "QDateTime"
 #include "QImage"
 #include "QThread"
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    #include "QAudioFormat"
+    #include "QAudioOutput"
+#else
+    #include "QAudioDevice"
+    #include "QAudioSink"
+    #include "QMediaDevices"
+#endif
 #ifndef QIFFMPEGPLAYERINTERFACE_H
     class QThFFmpegPlayer;
     #include "qiffmpegplayerinterface.h"
