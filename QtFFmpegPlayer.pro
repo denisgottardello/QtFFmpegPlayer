@@ -61,6 +61,10 @@ unix {
         LIBS += ../../ffmpeg-7.1/libswresample/libswresample.5.dylib
         LIBS += ../../ffmpeg-7.1/libswscale/libswscale.8.dylib
         LIBS += ../../ffmpeg-7.1/libavutil/libavutil.59.dylib
+        LIBS += -framework CoreMedia
+        LIBS += -framework CoreFoundation
+        LIBS += -framework IOKit
+        LIBS += -framework CoreMediaIO
     }
 }
 windows {
@@ -92,3 +96,15 @@ FORMS    += qfmainwindow.ui
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+unix:mac {
+    QMAKE_POST_LINK = \
+        install_name_tool -change /usr/local/lib/libavdevice.61.dylib @rpath/libavdevice.61.dylib $$OUT_PWD/QtFFmpegPlayer.app/Contents/MacOS/QtFFmpegPlayer && \
+        install_name_tool -change /usr/local/lib/libavfilter.10.dylib @rpath/libavfilter.10.dylib $$OUT_PWD/QtFFmpegPlayer.app/Contents/MacOS/QtFFmpegPlayer && \
+        install_name_tool -change /usr/local/lib/libswscale.8.dylib @rpath/libswscale.8.dylib $$OUT_PWD/QtFFmpegPlayer.app/Contents/MacOS/QtFFmpegPlayer && \
+        install_name_tool -change /usr/local/lib/libpostproc.58.dylib @rpath/libpostproc.58.dylib $$OUT_PWD/QtFFmpegPlayer.app/Contents/MacOS/QtFFmpegPlayer && \
+        install_name_tool -change /usr/local/lib/libavformat.61.dylib @rpath/libavformat.61.dylib $$OUT_PWD/QtFFmpegPlayer.app/Contents/MacOS/QtFFmpegPlayer && \
+        install_name_tool -change /usr/local/lib/libavcodec.61.dylib @rpath/libavcodec.61.dylib $$OUT_PWD/QtFFmpegPlayer.app/Contents/MacOS/QtFFmpegPlayer && \
+        install_name_tool -change /usr/local/lib/libswresample.5.dylib @rpath/libswresample.5.dylib $$OUT_PWD/QtFFmpegPlayer.app/Contents/MacOS/QtFFmpegPlayer && \
+        install_name_tool -change /usr/local/lib/libavutil.59.dylib @rpath/libavutil.59.dylib $$OUT_PWD/QtFFmpegPlayer.app/Contents/MacOS/QtFFmpegPlayer
+}

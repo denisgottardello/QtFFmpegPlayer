@@ -9,5 +9,7 @@ The software permits to play a movie (audio and video) on Linux, Windows, Androi
 - More than one signals to have the state of the object, audio and video stream.
 - The QIFFmpegPlayerInterface interface provides a differet way to have events about the player.
 - Tested with rtsp sources and movies.
+- The player can store to hard disk the copy of the stream.
+- Webcam support provided.
 
 ![](QtFFmpegPlayerScreenshot01.png)
