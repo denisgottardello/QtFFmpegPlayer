@@ -38,7 +38,7 @@ public:
         FFMPEG_SOURCE_DEVICE,
         FFMPEG_SOURCE_STREAM,
     };
-    QThFFmpegPlayer(QString Path, bool RealTime= true, FFMPEGSourceTypes FFMPEGSourceType= FFMPEG_SOURCE_STREAM, bool AudioSupport= false, QString FileName= "", QString Resolution= "320x240");
+    QThFFmpegPlayer(QString Path, bool RealTime= true, FFMPEGSourceTypes FFMPEGSourceType= FFMPEG_SOURCE_STREAM, bool AudioSupport= false, QString FileName= "", QString Resolution= "320x240", QString FormatName= "mp4",  QString RTSPTransport= "tcp");
     ~QThFFmpegPlayer();
     bool DoStart= true;
     double Speed= 1;
@@ -67,7 +67,7 @@ private:
     int Socket;
     int64_t DecodingTimeStampStart= -1;
     int64_t TimeStart= -1;
-    QString Path, FileName, Resolution;
+    QString Path, FileName, Resolution, FormatName, RTSPTransport;
     void run();
     int CodecContextOpen(int *pStreamIn, AVCodecContext **pAVCodecContext, AVFormatContext *pAVFormatContextIn, AVMediaType type, AVStream **pAVStream);
     QString AVMediaTypeToString(AVMediaType MediaType);

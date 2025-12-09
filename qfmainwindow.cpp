@@ -81,7 +81,7 @@ void QFMainWindow::on_QPBPlay_clicked() {
         QFFileIn.setFileName(ui->QLEFilePath->text());
         if (QFFileIn.open(QIODevice::ReadOnly)) {
             PachetCount= 0;
-            pQThFFmpegPlayer= new QThFFmpegPlayer("", ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_CALLBACK, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "");
+            pQThFFmpegPlayer= new QThFFmpegPlayer("", ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_CALLBACK, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "", "", ui->QLEFormatName->text());
             connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnAudioType(int,int)), this, SLOT(OnAudioType(int,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnConnectionState(ConnectionStates)), this, SLOT(OnConnectionState(ConnectionStates)), Qt::BlockingQueuedConnection);
@@ -97,8 +97,8 @@ void QFMainWindow::on_QPBPlay_clicked() {
         }
     } else if (ui->QRBFFmpegStream->isChecked()) {
         if (ui->QRBCameras->isChecked()) {
-            if (ui->QCBCameras->currentIndex()> -1) pQThFFmpegPlayer= new QThFFmpegPlayer(QVInterfaces.at(ui->QCBCameras->currentIndex()).Path, ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_DEVICE, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "", ui->QCBResolution->currentText());
-        } else pQThFFmpegPlayer= new QThFFmpegPlayer(ui->QLEFilePath->text(), ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_STREAM, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "");
+            if (ui->QCBCameras->currentIndex()> -1) pQThFFmpegPlayer= new QThFFmpegPlayer(QVInterfaces.at(ui->QCBCameras->currentIndex()).Path, ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_DEVICE, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "", ui->QCBResolution->currentText(), ui->QLEFormatName->text());
+        } else pQThFFmpegPlayer= new QThFFmpegPlayer(ui->QLEFilePath->text(), ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_STREAM, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "", "", ui->QLEFormatName->text(), ui->QLERTSPTransport->text());
         if (pQThFFmpegPlayer) {
             connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnAudioType(int,int)), this, SLOT(OnAudioType(int,int)), Qt::BlockingQueuedConnection);

@@ -120,10 +120,56 @@
          </property>
         </widget>
        </item>
+       <item row="1" column="7">
+        <widget class="QDoubleSpinBox" name="QDSBZoom">
+         <property name="minimum">
+          <double>0.250000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>3.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.250000000000000</double>
+         </property>
+         <property name="value">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="4">
+        <widget class="QLineEdit" name="QLERTSPTransport">
+         <property name="text">
+          <string>tcp</string>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="1">
         <widget class="QLabel" name="label_5">
          <property name="text">
           <string>Record length (s)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="3">
+        <widget class="QDoubleSpinBox" name="QDSBSpeed">
+         <property name="minimum">
+          <double>0.250000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>8.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.250000000000000</double>
+         </property>
+         <property name="value">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="3">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>RTSPTransport</string>
          </property>
         </widget>
        </item>
@@ -150,62 +196,6 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
-        <widget class="QCheckBox" name="QCBAudio">
-         <property name="text">
-          <string>Audio</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>Speed</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="3">
-        <widget class="QDoubleSpinBox" name="QDSBSpeed">
-         <property name="minimum">
-          <double>0.250000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>8.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.250000000000000</double>
-         </property>
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="4">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Zoom</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="5">
-        <widget class="QDoubleSpinBox" name="QDSBZoom">
-         <property name="minimum">
-          <double>0.250000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>3.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.250000000000000</double>
-         </property>
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
        <item row="2" column="0">
         <widget class="QRadioButton" name="QRBFFmpegStream">
          <property name="text">
@@ -223,6 +213,44 @@
          </property>
          <property name="checked">
           <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="4">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Zoom</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="6">
+        <widget class="QLineEdit" name="QLEFormatName">
+         <property name="text">
+          <string>mp4</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Speed</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="QCBAudio">
+         <property name="text">
+          <string>Audio</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="5">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>FormatName</string>
          </property>
         </widget>
        </item>
@@ -467,6 +495,8 @@
   <tabstop>QTBFilePath</tabstop>
   <tabstop>QCBRecord</tabstop>
   <tabstop>QSBRecordLength</tabstop>
+  <tabstop>QLEFormatName</tabstop>
+  <tabstop>QLERTSPTransport</tabstop>
   <tabstop>QCBRealTime</tabstop>
   <tabstop>QCBAudio</tabstop>
   <tabstop>QDSBSpeed</tabstop>
