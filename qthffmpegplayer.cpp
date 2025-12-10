@@ -352,10 +352,11 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                                     AVFrame2QImage(pAVFrameRGB, Image, pAVCodecContextVideo->width, pAVCodecContextVideo->height);
                                                     if (!Image.isNull()) {
                                                         if (DoStart) {
-                                                            if (pAVFrame->pts!= AV_NOPTS_VALUE) {
+                                                            // Some cameras such as Sricam black one, does not sends the pts value in AVFrame.
+                                                            //if (pAVFrame->pts!= AV_NOPTS_VALUE) {
                                                                 if (pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnImage(Image);
                                                                 emit OnImage(Image);
-                                                            }
+                                                            //}
                                                         }
                                                     }
                                                 }{
