@@ -204,7 +204,16 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                         PreviousDts[count]= -1;
                         PreviousPts[count]= -1;
                     }
+                    bool IsPaused= false;
+                    int64_t PauseStart= 0;
                     while (DoStart) {
+                        while (Pause && DoStart) {
+                            if (!IsPaused) {
+                                IsPaused= true;
+                                PauseStart= av_gettime();
+                            }
+                            av_usleep(1 * 1000 * 100);
+                        }
                         ElapsedTimer.restart();
                         int Ret= av_read_frame(pAVFormatContextIn, pAVPacket);
                         if (Ret>= 0) {
@@ -256,6 +265,10 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                         DecodingTimeStampStart= DecodingTimeStampTemp;
                                         TimeStart= av_gettime();
                                     } else {
+                                        if (IsPaused ) {
+                                            IsPaused= false;
+                                            TimeStart+= av_gettime()- PauseStart;
+                                        }
                                         int64_t nowTime= av_gettime()- TimeStart;
                                         if ((DecodingTimeStampTemp- DecodingTimeStampStart)> nowTime) {
                                             av_usleep(DecodingTimeStampTemp- DecodingTimeStampStart- nowTime);

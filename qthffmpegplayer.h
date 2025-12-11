@@ -40,7 +40,7 @@ public:
     };
     QThFFmpegPlayer(QString Path, bool RealTime= true, FFMPEGSourceTypes FFMPEGSourceType= FFMPEG_SOURCE_STREAM, bool AudioSupport= false, QString FileName= "", QString Resolution= "320x240", QString FormatName= "mp4",  QString RTSPTransport= "tcp");
     ~QThFFmpegPlayer();
-    bool DoStart= true;
+    bool DoStart= true, Pause= false;
     double Speed= 1;
     double Volume= 1;
     QIFFmpegPlayerInterface *pQIFFmpegPlayerInterface= nullptr;

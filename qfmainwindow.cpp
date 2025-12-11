@@ -71,6 +71,10 @@ void QFMainWindow::on_QDSBVolume_valueChanged(double arg1) {
     if (pQThFFmpegPlayer) pQThFFmpegPlayer->VolumeSet(arg1);
 }
 
+void QFMainWindow::on_QPBPause_toggled(bool checked) {
+    if (pQThFFmpegPlayer) pQThFFmpegPlayer->Pause= checked;
+}
+
 void QFMainWindow::on_QPBPlay_clicked() {
     ui->QPBPlay->setEnabled(false);
     QBAAudioBufferOut.clear();
@@ -113,6 +117,7 @@ void QFMainWindow::on_QPBPlay_clicked() {
             Timer.start(1000);
         }
     }
+    ui->QPBPause->setEnabled(true);
     ui->QPBStop->setEnabled(true);
 }
 
@@ -122,6 +127,8 @@ void QFMainWindow::on_QPBQuit_clicked() {
 }
 
 void QFMainWindow::on_QPBStop_clicked() {
+    ui->QPBPause->setEnabled(false);
+    ui->QPBPause->setChecked(false);
     ui->QPBStop->setEnabled(false);
     Timer.stop();
     if (pQThFFmpegPlayer) {

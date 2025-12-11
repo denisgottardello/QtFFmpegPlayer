@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>640</width>
+    <width>702</width>
     <height>480</height>
    </rect>
   </property>
@@ -285,7 +285,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>618</width>
+            <width>680</width>
             <height>266</height>
            </rect>
           </property>
@@ -406,6 +406,19 @@
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="QPBPause">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Pause</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="QPBStop">
          <property name="enabled">
           <bool>false</bool>
@@ -505,6 +518,7 @@
   <tabstop>QRBCallbackStream</tabstop>
   <tabstop>QSAImage</tabstop>
   <tabstop>QPBPlay</tabstop>
+  <tabstop>QPBPause</tabstop>
   <tabstop>QPBStop</tabstop>
   <tabstop>QDSBVolume</tabstop>
   <tabstop>QPBQuit</tabstop>

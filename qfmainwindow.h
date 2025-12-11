@@ -30,6 +30,7 @@ private slots:
     void on_QCBRecord_toggled(bool checked);
     void on_QDSBSpeed_valueChanged(double arg1);
     void on_QDSBVolume_valueChanged(double arg1);
+    void on_QPBPause_toggled(bool checked);
     void on_QPBPlay_clicked();
     void on_QPBQuit_clicked();
     void on_QPBStop_clicked();
