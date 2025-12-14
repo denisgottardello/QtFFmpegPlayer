@@ -390,7 +390,7 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                             char Result[AV_ERROR_MAX_STRING_SIZE];
                             av_make_error_string(Result, AV_ERROR_MAX_STRING_SIZE, Ret);
                             emit UpdateLog(QString(Result));
-                            DoStart= false;
+                            break;
                         }
                     }
                     av_packet_free(&pAVPacket);
