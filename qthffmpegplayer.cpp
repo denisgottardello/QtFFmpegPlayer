@@ -1,10 +1,14 @@
 #include "qthffmpegplayer.h"
 
-static int ReadPacket(void *opaque, uint8_t *pBuffer, int pBufferSize) {
-    return static_cast<QThFFmpegPlayer*>(opaque)->QThFFmpegPlayerReadPacket(pBuffer, pBufferSize);
+static int CallbackRead(void *opaque, uint8_t *pBuffer, int pBufferSize) {
+    return static_cast<QThFFmpegPlayer*>(opaque)->QThFFmpegPlayerCallbackRead(pBuffer, pBufferSize);
 }
 
-static int TimeoutCallback(void *pQThFFmpegPlayer) {
+static int64_t CallbackSeek(void *opaque, int64_t offset, int whence) {
+    return static_cast<QThFFmpegPlayer*>(opaque)->QThFFmpegPlayerCallbackSeek(offset, whence);
+}
+
+static int CallbackTimeout(void *pQThFFmpegPlayer) {
     if (!((QThFFmpegPlayer*)(pQThFFmpegPlayer))->DoStart) return 1;
     return ((QThFFmpegPlayer*)(pQThFFmpegPlayer))->ElapsedTimer.elapsed()> 10000;
 }
@@ -37,20 +41,19 @@ void QThFFmpegPlayer::run() {
             AVIOContext *pAVIOContext;
             uint8_t *pBuffer= static_cast<uint8_t*>(av_malloc(BUFFERSIZE));
             if (pBuffer) {
-                pAVIOContext= avio_alloc_context(pBuffer, BUFFERSIZE, 0, this, ReadPacket, nullptr, nullptr);
+                pAVIOContext= avio_alloc_context(pBuffer, BUFFERSIZE, 0, this, CallbackRead, nullptr, CallbackSeek);
                 if (!pAVIOContext) emit UpdateLog("avio_alloc_context Error!!!");
                 else {
-                    pAVFormatContextIn= avformat_alloc_context(); {
+                    pAVFormatContextIn= avformat_alloc_context();
+                    if (pAVFormatContextIn) {
                         pAVFormatContextIn->pb= pAVIOContext;
                         if (avformat_open_input(&pAVFormatContextIn, nullptr, nullptr, nullptr)< 0) emit UpdateLog("avformat_open_input Error!!!");
                         else {
                             if (DoStart && pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnConnectionState(CONNECTION_STATE_CONNECTED);
                             if (DoStart) emit OnConnectionState(CONNECTION_STATE_CONNECTED);
                             runCommon(pAVFormatContextIn);
-                            avformat_close_input(&pAVFormatContextIn);
                         }
-                    }{
-                        avformat_free_context(pAVFormatContextIn);
+                        avformat_close_input(&pAVFormatContextIn);
                     }
                     if (pAVIOContext) {
                         av_freep(&pAVIOContext->buffer);
@@ -104,21 +107,22 @@ void QThFFmpegPlayer::run() {
             if (DoStart && pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnConnectionState(CONNECTION_STATE_CONNECTING);
             if (DoStart) emit OnConnectionState(CONNECTION_STATE_CONNECTING);
             avformat_network_init();
-            pAVFormatContextIn= avformat_alloc_context(); {
-                pAVFormatContextIn->interrupt_callback.callback= TimeoutCallback;
+            pAVFormatContextIn= avformat_alloc_context();
+            if (pAVFormatContextIn) {
+                pAVFormatContextIn->interrupt_callback.callback= CallbackTimeout;
                 pAVFormatContextIn->interrupt_callback.opaque= this;
                 ElapsedTimer.restart();
                 AVDictionary *pAVDictionary= nullptr;
+                av_dict_set(&pAVDictionary, "hls_flags", "noparse_keyframes", 0);
                 av_dict_set(&pAVDictionary, "rtsp_transport", RTSPTransport.toStdString().c_str(), 0);
                 if (avformat_open_input(&pAVFormatContextIn, Path.toStdString().c_str(), nullptr, &pAVDictionary)< 0) emit UpdateLog("avformat_open_input Error!!!");
                 else {
                     if (DoStart && pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnConnectionState(CONNECTION_STATE_CONNECTED);
                     if (DoStart) emit OnConnectionState(CONNECTION_STATE_CONNECTED);
                     runCommon(pAVFormatContextIn);
-                    avformat_close_input(&pAVFormatContextIn);
                 }
-            }{
-                avformat_free_context(pAVFormatContextIn);
+                avformat_close_input(&pAVFormatContextIn);
+                av_dict_free(&pAVDictionary);
             }
             avformat_network_deinit();
             if (DoStart && pQIFFmpegPlayerInterface) pQIFFmpegPlayerInterface->FFmpegPlayerOnConnectionState(CONNECTION_STATE_IDLE);
@@ -134,6 +138,10 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
     if (avformat_find_stream_info(pAVFormatContextIn, nullptr)< 0) emit UpdateLog("avformat_find_stream_info Error!!!");
     else {
         av_dump_format(pAVFormatContextIn, 0, Path.toStdString().c_str(), 0);
+        if (pAVFormatContextIn->duration!= AV_NOPTS_VALUE) emit OnDuration(double(pAVFormatContextIn->duration / (double)AV_TIME_BASE));
+        else emit UpdateLog("Unable to get duration value!!!");
+        if (pAVFormatContextIn->duration!= AV_NOPTS_VALUE && pAVFormatContextIn->duration> 0) emit OnSeekable(true);
+        else emit OnSeekable(false);
         int StreamAudioIn= -1;
         int StreamVideoIn= -1;
         AVCodecContext *pAVCodecContextAudio= nullptr;
@@ -206,6 +214,8 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                     }
                     bool IsPaused= false;
                     int64_t PauseStart= 0;
+                    int64_t TimeStart= -1/*av_gettime()*/;
+                    bool SeekExecuted= false;
                     while (DoStart) {
                         while (DoStart && Pause) {
                             if (!IsPaused) {
@@ -215,6 +225,35 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                             av_usleep(1 * 1000 * 100);
                         }
                         ElapsedTimer.restart();
+                        if (Position> -1) {
+                            int StreamIn= -1;
+                            AVStream *pAVStream= nullptr;
+                            if (StreamVideoIn> -1) {
+                                StreamIn= StreamVideoIn;
+                                pAVStream= pAVFormatContextIn->streams[StreamVideoIn];
+                            } else if (StreamAudioIn> -1) {
+                                StreamIn= StreamAudioIn;
+                                pAVStream= pAVFormatContextIn->streams[StreamAudioIn];
+                            }
+                            if (pAVStream) {
+                                PauseStart= av_gettime();
+                                int64_t targetTimestamp= Position / av_q2d(pAVStream->time_base);
+                                if (av_seek_frame(pAVFormatContextIn, StreamIn, targetTimestamp, AVSEEK_FLAG_BACKWARD)>= 0) {
+                                    if (pAVCodecContextAudio) avcodec_flush_buffers(pAVCodecContextAudio);
+                                    if (pAVCodecContextVideo) avcodec_flush_buffers(pAVCodecContextVideo);
+                                    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+                                        if (pQAudioOutput) pQAudioOutput->reset();
+                                    #else
+                                        if (pQAudioSink) {
+                                            pQAudioSink->stop();
+                                            pQAudioSink->start();
+                                        }
+                                    #endif
+                                    SeekExecuted= true;
+                                }
+                            }
+                            Position= -1;
+                        }
                         int Ret= av_read_frame(pAVFormatContextIn, pAVPacket);
                         if (Ret>= 0) {
                             QDTLastPacket= QDateTime::currentDateTime();
@@ -250,38 +289,13 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                     av_packet_unref(&AVPacketTemp);
                                 }
                             }
-                            if (RealTime) {
-                                if (pAVPacket->dts== AV_NOPTS_VALUE) {
-                                    QString Result= QString("Decoding Time Stamp error, stream index: %1, id: %2, type: %3")
-                                    .arg(pAVPacket->stream_index)
-                                        .arg(pAVFormatContextIn->streams[pAVPacket->stream_index]->id)
-                                        .arg(AVMediaTypeToString(pAVFormatContextIn->streams[pAVPacket->stream_index]->codecpar->codec_type));
-                                    emit UpdateLog(Result);
-                                } else {
-                                    AVRational time_base= pAVFormatContextIn->streams[pAVPacket->stream_index]->time_base;
-                                    AVRational time_base_q= {1, static_cast<int>(static_cast<double>(AV_TIME_BASE) / Speed)};
-                                    int64_t DecodingTimeStampTemp= av_rescale_q(pAVPacket->dts, time_base, time_base_q);
-                                    if (DecodingTimeStampStart< 0) {
-                                        DecodingTimeStampStart= DecodingTimeStampTemp;
-                                        TimeStart= av_gettime();
-                                    } else {
-                                        if (IsPaused ) {
-                                            IsPaused= false;
-                                            TimeStart+= av_gettime()- PauseStart;
-                                        }
-                                        int64_t nowTime= av_gettime()- TimeStart;
-                                        if ((DecodingTimeStampTemp- DecodingTimeStampStart)> nowTime) {
-                                            av_usleep(DecodingTimeStampTemp- DecodingTimeStampStart- nowTime);
-                                        }
-                                    }
-                                }
-                            }
-                            if (pAVPacket->stream_index== StreamAudioIn) {
+                            if (pAVPacket->stream_index== StreamAudioIn && Speed== 1) {
                                 Ret= avcodec_send_packet(pAVCodecContextAudio, pAVPacket);
                                 if (Ret< 0) emit UpdateLog("StreamAudioIn Error submitting a packet for decoding.");
                                 while (DoStart && Ret>= 0) {
                                     Ret= avcodec_receive_frame(pAVCodecContextAudio, pAVFrame);
                                     if (Ret>= 0) {
+                                        if (StreamVideoIn== -1) Delay(pAVFormatContextIn->streams[pAVPacket->stream_index], pAVFrame, &SeekExecuted, &IsPaused, &TimeStart, &PauseStart);
                                         //
                                         // begin
                                         SwrContext *pSwrContext= nullptr;
@@ -349,6 +363,7 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                             }
                                         #endif
                                     }
+                                    if (pAVPacket->pts!= AV_NOPTS_VALUE) emit OnPosition(pAVPacket->pts * av_q2d(pAVFormatContextIn->streams[pAVPacket->stream_index]->time_base));
                                 }
                             } else if (pAVPacket->stream_index== StreamVideoIn) {
                                 Ret= avcodec_send_packet(pAVCodecContextVideo, pAVPacket);
@@ -356,6 +371,7 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                 while (DoStart && Ret>= 0) {
                                     Ret= avcodec_receive_frame(pAVCodecContextVideo, pAVFrame);
                                     if (Ret>= 0) {
+                                        Delay(pAVFormatContextIn->streams[pAVPacket->stream_index], pAVFrame, &SeekExecuted, &IsPaused, &TimeStart, &PauseStart);
                                         AVFrame *pAVFrameRGB= av_frame_alloc(); {
                                             uint8_t *Buffer= static_cast<uint8_t*>(malloc(static_cast<size_t>(av_image_get_buffer_size(AV_PIX_FMT_RGB24, pAVCodecContextVideo->width, pAVCodecContextVideo->height, 1)))); {
                                                 av_image_fill_arrays(pAVFrameRGB->data, pAVFrameRGB->linesize, Buffer, AV_PIX_FMT_RGB24, pAVCodecContextVideo->width, pAVCodecContextVideo->height, 1);
@@ -384,6 +400,7 @@ void QThFFmpegPlayer::runCommon(AVFormatContext *pAVFormatContextIn) {
                                     }
                                     av_frame_unref(pAVFrame);
                                 }
+                                if ((StreamAudioIn== -1 || Speed!= 1) && pAVPacket->pts!= AV_NOPTS_VALUE) emit OnPosition(pAVPacket->pts * av_q2d(pAVFormatContextIn->streams[pAVPacket->stream_index]->time_base));
                             }
                             av_packet_unref(pAVPacket);
                         } else {
@@ -470,6 +487,42 @@ int QThFFmpegPlayer::CodecContextOpen(int *pStreamIn, AVCodecContext **pAVCodecC
     return 0;
 }
 
+void QThFFmpegPlayer::Delay(AVStream *pAVStream, AVFrame *pAVFrame, bool *pSeekExecuted, bool *pIsPaused, int64_t *pTimeStart, int64_t *pPauseStart) {
+    //printf("pts, pkt_dts: %" PRId64 ", %" PRId64 "\n", pAVFrame->pts, pAVFrame->pkt_dts);
+    if (SpeedCurrent!= Speed) {
+        SpeedCurrent= Speed;
+        int64_t CurrentPts= av_rescale_q((pAVFrame->pts != AV_NOPTS_VALUE) ? pAVFrame->pts : pAVFrame->pkt_dts, pAVStream->time_base, AV_TIME_BASE_Q);
+        *pTimeStart= av_gettime()- (int64_t)(CurrentPts / SpeedCurrent);
+    }
+    if (RealTime) {
+        if (*pTimeStart== -1) {
+            int64_t CurrentPts= (pAVFrame->pts!= AV_NOPTS_VALUE) ? pAVFrame->pts : pAVFrame->pkt_dts;
+            *pTimeStart= av_gettime()- av_rescale_q(CurrentPts, (AVRational){1, 90000}, (AVRational){1, 1000000});
+        } else {
+            if (*pSeekExecuted) {
+                int64_t CurrentPts= (pAVFrame->pts!= AV_NOPTS_VALUE) ? pAVFrame->pts : pAVFrame->pkt_dts;
+                if (CurrentPts>= 0) {
+                    *pTimeStart= av_gettime()- av_rescale_q(CurrentPts, pAVStream->time_base, AV_TIME_BASE_Q);
+                    *pSeekExecuted= false;
+                }
+            } else {
+                if (pAVFrame->pts!= AV_NOPTS_VALUE) {
+                    int64_t Value= av_rescale_q(pAVFrame->pts, pAVStream->time_base, AV_TIME_BASE_Q)- (av_gettime()- *pTimeStart) * SpeedCurrent;
+                    if (Value> 0) av_usleep(Value);
+                } else {
+                    int64_t Value= av_rescale_q(pAVFrame->pkt_dts, pAVStream->time_base, AV_TIME_BASE_Q)- (av_gettime()- *pTimeStart) * SpeedCurrent;
+                    if (Value> 0) av_usleep(Value);
+                }
+                if (*pIsPaused) {
+                    *pIsPaused= false;
+                    *pTimeStart+= av_gettime()- *pPauseStart;
+                }
+            }
+        }
+    }
+    //fflush(stdout);
+}
+
 void QThFFmpegPlayer::FileClose(AVFormatContext **pAVFormatContextOut) {
     if (*pAVFormatContextOut) {
         av_write_trailer(*pAVFormatContextOut);
@@ -500,15 +553,23 @@ void QThFFmpegPlayer::FileRenew(QString FileName) {
     FileOutRenew= true;
 }
 
+void QThFFmpegPlayer::PositionSet(double Value) {
+    Position= Value;
+}
+
 void QThFFmpegPlayer::Stop() {
     DoStart= false;
 }
 
-int QThFFmpegPlayer::QThFFmpegPlayerReadPacket(uint8_t *pBuffer, int pBufferSize) {
+int QThFFmpegPlayer::QThFFmpegPlayerCallbackRead(uint8_t *pBuffer, int pBufferSize) {
     int BytesIn= 0;
-    emit OnPacketRead(pBuffer, pBufferSize, &BytesIn);
+    emit OnCallbackRead(pBuffer, pBufferSize, &BytesIn);
     if (!BytesIn) return AVERROR_EOF;
     else return BytesIn;
+}
+
+int64_t QThFFmpegPlayer::QThFFmpegPlayerCallbackSeek(int64_t offset, int whence) {
+    return emit OnCallbackSeek(offset, whence);
 }
 
 void QThFFmpegPlayer::VolumeSet(double Value) {

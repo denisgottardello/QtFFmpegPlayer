@@ -22,18 +22,18 @@ ANDROID_ABIS = arm64-v8a
 
 unix {
     unix:!mac {
-        INCLUDEPATH += ../../ffmpeg-7.1/
         !android {
-            LIBS += ../../ffmpeg-7.1/libs/libavdevice.so.61
-            LIBS += ../../ffmpeg-7.1/libs/libavfilter.so.10
-            LIBS += ../../ffmpeg-7.1/libs/libavformat.so.61
-            LIBS += ../../ffmpeg-7.1/libs/libavcodec.so.61
-            LIBS += ../../ffmpeg-7.1/libs/libpostproc.so.58
-            LIBS += ../../ffmpeg-7.1/libs/libswresample.so.5
-            LIBS += ../../ffmpeg-7.1/libs/libswscale.so.8
-            LIBS += ../../ffmpeg-7.1/libs/libavutil.so.59
+            INCLUDEPATH += ../../ffmpeg-8.0.1/
+            LIBS += ../../ffmpeg-8.0.1/libs/libavdevice.so.62
+            LIBS += ../../ffmpeg-8.0.1/libs/libavfilter.so.11
+            LIBS += ../../ffmpeg-8.0.1/libs/libavformat.so.62
+            LIBS += ../../ffmpeg-8.0.1/libs/libavcodec.so.62
+            LIBS += ../../ffmpeg-8.0.1/libs/libswresample.so.6
+            LIBS += ../../ffmpeg-8.0.1/libs/libswscale.so.9
+            LIBS += ../../ffmpeg-8.0.1/libs/libavutil.so.60
         }
         android {
+            INCLUDEPATH += ../../ffmpeg-7.1/
             LIBS += ../../ffmpeg-7.1/libs/arm64-v8a/libavdevice.so
             LIBS += ../../ffmpeg-7.1/libs/arm64-v8a/libavfilter.so
             LIBS += ../../ffmpeg-7.1/libs/arm64-v8a/libavformat.so

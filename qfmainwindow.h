@@ -27,9 +27,12 @@ public:
     ~QFMainWindow();
 
 private slots:
+    int64_t OnCallbackSeek(int64_t offset, int whence);
     void on_QCBRecord_toggled(bool checked);
     void on_QDSBSpeed_valueChanged(double arg1);
     void on_QDSBVolume_valueChanged(double arg1);
+    void on_QHSPosition_sliderMoved(int position);
+    void on_QHSPosition_sliderReleased();
     void on_QPBPause_toggled(bool checked);
     void on_QPBPlay_clicked();
     void on_QPBQuit_clicked();
@@ -37,11 +40,14 @@ private slots:
     void on_QTBFilePath_clicked();
     void OnAudio(const uchar* data, int Length);
     void OnAudioType(int SampleRate, int ChannelCount);
+    void OnCallbackRead(uint8_t *pBuffer, int pBufferSize, int *BytesIn);
     void OnConnectionState(ConnectionStates ConnectionState);
+    void OnDuration(double Value);
     void OnEnd();
     void OnImage(QImage Image);
     void OnKeyFrame();
-    void OnPacketRead(uint8_t *pBuffer, int pBufferSize, int *BytesIn);
+    void OnPosition(double Value);
+    void OnSeekable(bool Seekable);
     void OnTimer();
     void UpdateLog(QString Log);
 

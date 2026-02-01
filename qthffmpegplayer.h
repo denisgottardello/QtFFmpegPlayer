@@ -41,37 +41,44 @@ public:
     QThFFmpegPlayer(QString Path, bool RealTime= true, FFMPEGSourceTypes FFMPEGSourceType= FFMPEG_SOURCE_STREAM, bool AudioSupport= false, QString FileName= "", QString Resolution= "320x240", QString FormatName= "mp4",  QString RTSPTransport= "tcp");
     ~QThFFmpegPlayer();
     bool DoStart= true, Pause= false;
+    double Position= -1;
     double Speed= 1;
     double Volume= 1;
     QIFFmpegPlayerInterface *pQIFFmpegPlayerInterface= nullptr;
     QDateTime QDTLastPacket;
     QElapsedTimer ElapsedTimer;
-    int QThFFmpegPlayerReadPacket(uint8_t *pBuffer, int pBufferSize);
+    int QThFFmpegPlayerCallbackRead(uint8_t *pBuffer, int pBufferSize);
+    int64_t QThFFmpegPlayerCallbackSeek(int64_t offset, int whence);
     void FileRenew(QString FileName);
+    void PositionSet(double Value);
     void Stop();
     void VolumeSet(double Value);
 
 signals:
+    int64_t OnCallbackSeek(int64_t offset, int whence);
     void OnAudio(const uchar* data, int Length);
     void OnAudioType(int SampleRate, int ChannelCount);
+    void OnCallbackRead(uint8_t *pBuffer, int pBufferSize, int *BytesIn);
     void OnConnectionState(ConnectionStates ConnectionState);
+    void OnDuration(double Value);
     void OnEnd();
     void OnImage(QImage Image);
     void OnKeyFrame();
-    void OnPacketRead(uint8_t *pBuffer, int pBufferSize, int *BytesIn);
+    void OnPosition(double Value);
+    void OnSeekable(bool Seekable);
     void UpdateLog(QString Log);
 
 private:
     bool RealTime, AudioSupport, FileOutRenew= false;
+    double SpeedCurrent= 1;
     FFMPEGSourceTypes FFMPEGSourceType;
     int Socket;
-    int64_t DecodingTimeStampStart= -1;
-    int64_t TimeStart= -1;
     QString Path, FileName, Resolution, FormatName, RTSPTransport;
     void run();
     int CodecContextOpen(int *pStreamIn, AVCodecContext **pAVCodecContext, AVFormatContext *pAVFormatContextIn, AVMediaType type, AVStream **pAVStream);
     QString AVMediaTypeToString(AVMediaType MediaType);
     void AVFrame2QImage(AVFrame *pAVFrame, QImage &Image, int Width, int Height);
+    void Delay(AVStream *pAVStream, AVFrame *pAVFrame, bool *pSeekExecuted, bool *pIsPaused, int64_t *pTimeStart, int64_t *pPauseStart);
     void FileClose(AVFormatContext **pAVFormatContextOut);
     void FileOpen(AVFormatContext *pAVFormatContextIn, AVFormatContext **pAVFormatContextOut);
     void runCommon(AVFormatContext *pAVFormatContextIn);

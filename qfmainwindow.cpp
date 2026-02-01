@@ -22,15 +22,9 @@ QFMainWindow::QFMainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::QF
         AudioFormat.setSampleFormat(QAudioFormat::Int16);
         AudioFormat.setSampleRate(44100);
     #endif
-    for (int count= 0; count< QCoreApplication::arguments().count(); count++) {
-        QString Parameter= QString(QCoreApplication::arguments().at(count));
-        if (Parameter.length()> QString("--FilePath=").length()) {
-            if (Parameter.left(QString("--FilePath=").length()).compare("--FilePath=")== 0) {
-                ui->QLEFilePath->setText(Parameter.right(Parameter.length()- QString("--FilePath=").length()));
-                break;
-            }
-        }
-    }
+    QString Prefix= "--FilePath=";
+    QStringList Matches= QCoreApplication::arguments().filter(QRegularExpression("^" + QRegularExpression::escape(Prefix) + ".*"));
+    if (!Matches.isEmpty()) ui->QLEFilePath->setText(Matches.first().mid(Prefix.length()));
     #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         QAudioDeviceInfo AudioDeviceInfo= QAudioDeviceInfo::defaultOutputDevice();
         pQAudioOutput= new QAudioOutput(AudioDeviceInfo, AudioFormat, nullptr);
@@ -71,28 +65,47 @@ void QFMainWindow::on_QDSBVolume_valueChanged(double arg1) {
     if (pQThFFmpegPlayer) pQThFFmpegPlayer->VolumeSet(arg1);
 }
 
+void QFMainWindow::on_QHSPosition_sliderReleased() {
+    if (pQThFFmpegPlayer) pQThFFmpegPlayer->PositionSet(ui->QHSPosition->value());
+}
+
+void QFMainWindow::on_QHSPosition_sliderMoved(int position) {
+    if (ui->QHSPosition->isSliderDown()) {
+        int Hours= (int)(position / 3600);
+        int Minutes= (int)((position - Hours * 3600) / 60);
+        int Seconds= (int)position % 60;
+        ui->QLPosition->setText(QString("%1:%2:%3").arg(Hours, 2, 10, QChar('0')).arg(Minutes, 2, 10, QChar('0')).arg(Seconds, 2, 10, QChar('0')));
+    }
+}
+
 void QFMainWindow::on_QPBPause_toggled(bool checked) {
     if (pQThFFmpegPlayer) pQThFFmpegPlayer->Pause= checked;
 }
 
 void QFMainWindow::on_QPBPlay_clicked() {
     ui->QPBPlay->setEnabled(false);
+    ui->QHSPosition->setEnabled(false);
+    ui->QLLength->clear();
     QBAAudioBufferOut.clear();
     FrameCount= 0;
     KeyFrameCount= 0;
     ui->QLFrames->clear();;
     if (ui->QRBCallbackStream->isChecked()) {
-        QFFileIn.setFileName(ui->QLEFilePath->text());
+        QFFileIn.setFileName(ui->QLEFilePath->text().replace("file://", ""));
         if (QFFileIn.open(QIODevice::ReadOnly)) {
             PachetCount= 0;
-            pQThFFmpegPlayer= new QThFFmpegPlayer("", ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_CALLBACK, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "", "", ui->QLEFormatName->text());
+            pQThFFmpegPlayer= new QThFFmpegPlayer("", ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_CALLBACK, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "", "", ui->QCBFormatName->currentText());
             connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnAudioType(int,int)), this, SLOT(OnAudioType(int,int)), Qt::BlockingQueuedConnection);
+            connect(pQThFFmpegPlayer, SIGNAL(OnCallbackRead(uint8_t*,int,int*)), this, SLOT(OnCallbackRead(uint8_t*,int,int*)), Qt::BlockingQueuedConnection);
+            connect(pQThFFmpegPlayer, SIGNAL(OnCallbackSeek(int64_t,int)), this, SLOT(OnCallbackSeek(int64_t,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnConnectionState(ConnectionStates)), this, SLOT(OnConnectionState(ConnectionStates)), Qt::BlockingQueuedConnection);
+            connect(pQThFFmpegPlayer, SIGNAL(OnDuration(double)), this, SLOT(OnDuration(double)));
             connect(pQThFFmpegPlayer, SIGNAL(OnEnd()), this, SLOT(OnEnd()));
             connect(pQThFFmpegPlayer, SIGNAL(OnImage(QImage)), this, SLOT(OnImage(QImage)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnKeyFrame()), this, SLOT(OnKeyFrame()));
-            connect(pQThFFmpegPlayer, SIGNAL(OnPacketRead(uint8_t*,int,int*)), this, SLOT(OnPacketRead(uint8_t*,int,int*)), Qt::BlockingQueuedConnection);
+            connect(pQThFFmpegPlayer, SIGNAL(OnSeekable(bool)), this, SLOT(OnSeekable(bool)));
+            connect(pQThFFmpegPlayer, SIGNAL(OnPosition(double)), this, SLOT(OnPosition(double)));
             connect(pQThFFmpegPlayer, SIGNAL(UpdateLog(QString)), this, SLOT(UpdateLog(QString)));
             pQThFFmpegPlayer->Speed= ui->QDSBSpeed->value();
             pQThFFmpegPlayer->start();
@@ -101,15 +114,21 @@ void QFMainWindow::on_QPBPlay_clicked() {
         }
     } else if (ui->QRBFFmpegStream->isChecked()) {
         if (ui->QRBCameras->isChecked()) {
-            if (ui->QCBCameras->currentIndex()> -1) pQThFFmpegPlayer= new QThFFmpegPlayer(QVInterfaces.at(ui->QCBCameras->currentIndex()).Path, ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_DEVICE, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "", ui->QCBResolution->currentText(), ui->QLEFormatName->text());
-        } else pQThFFmpegPlayer= new QThFFmpegPlayer(ui->QLEFilePath->text(), ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_STREAM, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "", "", ui->QLEFormatName->text(), ui->QLERTSPTransport->text());
-        if (pQThFFmpegPlayer) {
+            if (ui->QCBCameras->currentIndex()> -1) pQThFFmpegPlayer= new QThFFmpegPlayer(QVInterfaces.at(ui->QCBCameras->currentIndex()).Path, ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_DEVICE, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "", ui->QCBResolution->currentText(), ui->QCBFormatName->currentText());
+        } else {
+            pQThFFmpegPlayer= new QThFFmpegPlayer(
+                ui->QLEFilePath->text().startsWith("rtsp://") ? ui->QLEFilePath->text().replace(" ", "%20") : ui->QLEFilePath->text(),
+                ui->QCBRealTime->isChecked(), QThFFmpegPlayer::FFMPEG_SOURCE_STREAM, false, ui->QCBRecord->isChecked() ? QDateTime::currentDateTime().toString("yyyyMMdd hh:mm:ss")+ ".mp4" : "", "", ui->QCBFormatName->currentText(), ui->QCBRTSPTransport->currentText());
+        } if (pQThFFmpegPlayer) {
             connect(pQThFFmpegPlayer, SIGNAL(OnAudio(const uchar*,int)), this, SLOT(OnAudio(const uchar*,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnAudioType(int,int)), this, SLOT(OnAudioType(int,int)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnConnectionState(ConnectionStates)), this, SLOT(OnConnectionState(ConnectionStates)), Qt::BlockingQueuedConnection);
+            connect(pQThFFmpegPlayer, SIGNAL(OnDuration(double)), this, SLOT(OnDuration(double)));
             connect(pQThFFmpegPlayer, SIGNAL(OnEnd()), this, SLOT(OnEnd()));
             connect(pQThFFmpegPlayer, SIGNAL(OnImage(QImage)), this, SLOT(OnImage(QImage)), Qt::BlockingQueuedConnection);
             connect(pQThFFmpegPlayer, SIGNAL(OnKeyFrame()), this, SLOT(OnKeyFrame()));
+            connect(pQThFFmpegPlayer, SIGNAL(OnPosition(double)), this, SLOT(OnPosition(double)));
+            connect(pQThFFmpegPlayer, SIGNAL(OnSeekable(bool)), this, SLOT(OnSeekable(bool)));
             connect(pQThFFmpegPlayer, SIGNAL(UpdateLog(QString)), this, SLOT(UpdateLog(QString)));
             pQThFFmpegPlayer->Speed= ui->QDSBSpeed->value();
             pQThFFmpegPlayer->start();
@@ -221,6 +240,28 @@ void QFMainWindow::on_QCBRecord_toggled(bool checked) {
     }
 }
 
+void QFMainWindow::OnCallbackRead(uint8_t *pBuffer, int pBufferSize, int *BytesIn) {
+    QByteArray QBAByteIn= QFFileIn.read(pBufferSize);
+    memcpy(pBuffer, QBAByteIn.data(), static_cast<ulong>(QBAByteIn.size()));
+    *BytesIn= QBAByteIn.size();
+    PachetCount++;
+    //qDebug() << "PachetCount:" << PachetCount << "bytes:" << *BytesIn << "pBufferSize:" << pBufferSize;
+}
+
+int64_t QFMainWindow::OnCallbackSeek(int64_t offset, int whence) {
+    //qDebug() << "offset:" << offset << "whence:" << whence;
+    int64_t Result= 0;
+    switch(whence) {
+        case AVSEEK_SIZE: return QFFileIn.size();
+        case SEEK_CUR: Result= QFFileIn.pos()+ offset; break;
+        case SEEK_END: Result= QFFileIn.size()+ offset; break;
+        case SEEK_SET: Result= offset; break;
+    }
+    if (Result< 0 || Result> QFFileIn.size()) return -1;
+    QFFileIn.seek(Result);
+    return QFFileIn.pos();
+}
+
 void QFMainWindow::OnConnectionState(ConnectionStates ConnectionState) {
     switch(ConnectionState) {
         case CONNECTION_STATE_CONNECTED: ui->QLConnectionState->setText(tr("Connected")); break;
@@ -231,9 +272,18 @@ void QFMainWindow::OnConnectionState(ConnectionStates ConnectionState) {
             pQThFFmpegPlayer= nullptr;
             ui->QLConnectionState->setText(tr("Idle"));
             ui->QLImage->clear();
+            ui->QPBStop->click();
             break;
         }
     }
+}
+
+void QFMainWindow::OnDuration(double Value) {
+    int Hours= (int)(Value / 3600);
+    int Minutes= (int)((Value - Hours * 3600) / 60);
+    int Seconds= (int)Value % 60;
+    ui->QLLength->setText(QString("%1:%2:%3").arg(Hours, 2, 10, QChar('0')).arg(Minutes, 2, 10, QChar('0')).arg(Seconds, 2, 10, QChar('0')));
+    ui->QHSPosition->setMaximum(Value);
 }
 
 void QFMainWindow::OnEnd() {
@@ -254,12 +304,18 @@ void QFMainWindow::OnKeyFrame() {
     KeyFrameCount++;
 }
 
-void QFMainWindow::OnPacketRead(uint8_t *pBuffer, int pBufferSize, int *BytesIn) {
-    QByteArray QBAByteIn= QFFileIn.read(pBufferSize);
-    memcpy(pBuffer, QBAByteIn.data(), static_cast<ulong>(QBAByteIn.size()));
-    *BytesIn= QBAByteIn.size();
-    PachetCount++;
-    //qDebug() << "PachetCount:" << PachetCount << "bytes:" << *BytesIn << "pBufferSize:" << pBufferSize;
+void QFMainWindow::OnPosition(double Value) {
+    if (!ui->QHSPosition->isSliderDown()) {
+        ui->QHSPosition->setValue(Value);
+        int Hours= (int)(Value / 3600);
+        int Minutes= (int)((Value - Hours * 3600) / 60);
+        int Seconds= (int)Value % 60;
+        ui->QLPosition->setText(QString("%1:%2:%3").arg(Hours, 2, 10, QChar('0')).arg(Minutes, 2, 10, QChar('0')).arg(Seconds, 2, 10, QChar('0')));
+    }
+}
+
+void QFMainWindow::OnSeekable(bool Seekable) {
+    ui->QHSPosition->setEnabled(Seekable);
 }
 
 void QFMainWindow::OnTimer() {

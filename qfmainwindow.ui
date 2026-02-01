@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>702</width>
+    <width>762</width>
     <height>480</height>
    </rect>
   </property>
@@ -30,57 +30,6 @@
        <property name="bottomMargin">
         <number>1</number>
        </property>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_6">
-         <property name="text">
-          <string>Cameras</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="4">
-        <widget class="QRadioButton" name="radioButton">
-         <property name="text">
-          <string>Selected</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="4">
-        <widget class="QRadioButton" name="QRBCameras">
-         <property name="text">
-          <string>Selected</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1" colspan="3">
-        <widget class="QLineEdit" name="QLEFilePath">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="5">
-        <widget class="QToolButton" name="QTBFilePath">
-         <property name="text">
-          <string>...</string>
-         </property>
-         <property name="popupMode">
-          <enum>QToolButton::InstantPopup</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>File path</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1" colspan="2">
-        <widget class="QComboBox" name="QCBCameras"/>
-       </item>
        <item row="0" column="3">
         <widget class="QComboBox" name="QCBResolution">
          <item>
@@ -93,6 +42,60 @@
            <string>640x480</string>
           </property>
          </item>
+        </widget>
+       </item>
+       <item row="1" column="5">
+        <widget class="QToolButton" name="QTBFilePath">
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="popupMode">
+          <enum>QToolButton::InstantPopup</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1" colspan="2">
+        <widget class="QComboBox" name="QCBCameras"/>
+       </item>
+       <item row="1" column="1" colspan="3">
+        <widget class="QLineEdit" name="QLEFilePath">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>Cameras</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="4">
+        <widget class="QRadioButton" name="radioButton">
+         <property name="text">
+          <string>Selected</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>File path</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="4">
+        <widget class="QRadioButton" name="QRBCameras">
+         <property name="text">
+          <string>Selected</string>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
         </widget>
        </item>
       </layout>
@@ -113,14 +116,62 @@
        <property name="bottomMargin">
         <number>1</number>
        </property>
-       <item row="0" column="0">
-        <widget class="QCheckBox" name="QCBRecord">
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="QCBAudio">
          <property name="text">
-          <string>Record to file</string>
+          <string>Audio</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
-       <item row="1" column="7">
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Record length (s)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="4" colspan="2">
+        <widget class="QComboBox" name="QCBRTSPTransport">
+         <item>
+          <property name="text">
+           <string>tcp</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>udp</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="0" column="7" colspan="2">
+        <widget class="QComboBox" name="QCBFormatName">
+         <property name="currentIndex">
+          <number>1</number>
+         </property>
+         <item>
+          <property name="text">
+           <string>avi</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>mp4</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="1" column="5">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Zoom</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="6">
         <widget class="QDoubleSpinBox" name="QDSBZoom">
          <property name="minimum">
           <double>0.250000000000000</double>
@@ -136,17 +187,37 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="4">
-        <widget class="QLineEdit" name="QLERTSPTransport">
+       <item row="1" column="8">
+        <widget class="QRadioButton" name="QRBFFmpegStream">
          <property name="text">
-          <string>tcp</string>
+          <string>FFmpeg stream</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_5">
+       <item row="0" column="0">
+        <widget class="QCheckBox" name="QCBRecord">
          <property name="text">
-          <string>Record length (s)</string>
+          <string>Record to file</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="9">
+        <widget class="QRadioButton" name="QRBCallbackStream">
+         <property name="text">
+          <string>Callback stream</string>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="3">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>RTSPTransport</string>
          </property>
         </widget>
        </item>
@@ -166,10 +237,20 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="3">
-        <widget class="QLabel" name="label_7">
+       <item row="1" column="2">
+        <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>RTSPTransport</string>
+          <string>Speed</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QCheckBox" name="QCBRealTime">
+         <property name="text">
+          <string>RealTime</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -186,68 +267,7 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QCheckBox" name="QCBRealTime">
-         <property name="text">
-          <string>RealTime</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QRadioButton" name="QRBFFmpegStream">
-         <property name="text">
-          <string>FFmpeg stream</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="4">
-        <widget class="QRadioButton" name="QRBCallbackStream">
-         <property name="text">
-          <string>Callback stream</string>
-         </property>
-         <property name="checked">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="4">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Zoom</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="6">
-        <widget class="QLineEdit" name="QLEFormatName">
-         <property name="text">
-          <string>mp4</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>Speed</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QCheckBox" name="QCBAudio">
-         <property name="text">
-          <string>Audio</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="5">
         <widget class="QLabel" name="label_8">
          <property name="text">
           <string>FormatName</string>
@@ -285,8 +305,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>680</width>
-            <height>266</height>
+            <width>740</width>
+            <height>269</height>
            </rect>
           </property>
           <layout class="QGridLayout" name="gridLayout_2">
@@ -315,32 +335,6 @@
              </property>
             </spacer>
            </item>
-           <item row="2" column="1">
-            <spacer name="verticalSpacer">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item row="0" column="1">
-            <spacer name="verticalSpacer_2">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
            <item row="1" column="1">
             <widget class="QLabel" name="QLImage">
              <property name="sizePolicy">
@@ -363,6 +357,19 @@
              </property>
             </widget>
            </item>
+           <item row="2" column="1">
+            <spacer name="verticalSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
            <item row="1" column="0">
             <spacer name="horizontalSpacer_3">
              <property name="orientation">
@@ -376,8 +383,60 @@
              </property>
             </spacer>
            </item>
+           <item row="0" column="1">
+            <spacer name="verticalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
           </layout>
          </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="widget_5" native="true">
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <property name="leftMargin">
+        <number>1</number>
+       </property>
+       <property name="topMargin">
+        <number>1</number>
+       </property>
+       <property name="rightMargin">
+        <number>1</number>
+       </property>
+       <property name="bottomMargin">
+        <number>1</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="QLPosition">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSlider" name="QHSPosition">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="QLLength">
+         <property name="text">
+          <string/>
+         </property>
         </widget>
        </item>
       </layout>
@@ -447,7 +506,7 @@
           <double>0.100000000000000</double>
          </property>
          <property name="value">
-          <double>0.500000000000000</double>
+          <double>1.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -508,8 +567,8 @@
   <tabstop>QTBFilePath</tabstop>
   <tabstop>QCBRecord</tabstop>
   <tabstop>QSBRecordLength</tabstop>
-  <tabstop>QLEFormatName</tabstop>
-  <tabstop>QLERTSPTransport</tabstop>
+  <tabstop>QCBRTSPTransport</tabstop>
+  <tabstop>QCBFormatName</tabstop>
   <tabstop>QCBRealTime</tabstop>
   <tabstop>QCBAudio</tabstop>
   <tabstop>QDSBSpeed</tabstop>
@@ -517,6 +576,7 @@
   <tabstop>QRBFFmpegStream</tabstop>
   <tabstop>QRBCallbackStream</tabstop>
   <tabstop>QSAImage</tabstop>
+  <tabstop>QHSPosition</tabstop>
   <tabstop>QPBPlay</tabstop>
   <tabstop>QPBPause</tabstop>
   <tabstop>QPBStop</tabstop>
